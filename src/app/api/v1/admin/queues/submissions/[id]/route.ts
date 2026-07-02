@@ -50,7 +50,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const city =
-    (cityId && (await db.city.findUnique({ where: { id: cityId } }))) ??
+    (cityId ? await db.city.findUnique({ where: { id: cityId } }) : null) ??
     (await db.city.findUniqueOrThrow({ where: { slug: "tashkent" } }));
 
   const slugBase = sub.name.toLowerCase().normalize("NFKD")

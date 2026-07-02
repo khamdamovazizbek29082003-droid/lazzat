@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+/* Class-based dark mode (toggled on <html>) instead of the media-query default. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-cobalt: #14418c;
+  --color-cobalt-deep: #0e3068;
+  --color-cobalt-lite: #2563c4;
+  --color-turquoise: #1e9c8d;
+  --color-saffron: #d68f27;
+  --color-anor: #b4322e;
+  --color-ink: #17202b;
+  --color-sub: #5b6b7e;
+  --color-paper: #ffffff;
+  --color-mist: #edf2f9;
+  --color-line: #dce5f0;
+}
+
+:root {
+  --bg: var(--color-mist);
+  --surface: var(--color-paper);
+  --surface-2: #f7f9fd;
+  --text: var(--color-ink);
+  --text-sub: var(--color-sub);
+  --border: var(--color-line);
+}
+
+.dark {
+  --bg: #0b1220;
+  --surface: #111b2e;
+  --surface-2: #16233b;
+  --text: #eaf0fa;
+  --text-sub: #93a3bc;
+  --border: #223050;
+}
+
+* {
+  border-color: var(--border);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+@keyframes pulse-pin {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(214, 143, 39, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 9px rgba(214, 143, 39, 0);
+  }
+}
+
+@keyframes drop-in {
+  from {
+    transform: translateY(-16px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+
+.animate-shimmer {
+  background-size: 200% auto;
+  animation: shimmer 3.5s linear infinite;
+}
+
+.animate-pulse-pin {
+  animation: pulse-pin 1.8s infinite;
+}
+
+.animate-drop-in {
+  animation: drop-in 0.22s ease-out;
+}
+
+.animate-rise-in {
+  animation: rise-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-pin,
+  .animate-drop-in,
+  .animate-rise-in,
+  .animate-shimmer {
+    animation: none;
+  }
+}
+
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-logo {
+  opacity: 0.6;
+}

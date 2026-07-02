@@ -1,0 +1,597 @@
+// Lazzat — Uzbekistan Food Discovery Platform
+// Prisma schema (PostgreSQL + PostGIS + pg_trgm)
+//
+// Conventions:
+// - Translations live in *Translation tables keyed by (entityId, locale) so new
+//   languages are data, not migrations.
+// - Money is integer UZS (soums). Currency kept for future-proofing.
+// - All user-generated content carries ModerationStatus.
+// - location uses PostGIS geography(Point,4326) via Unsupported(); spatial queries
+//   go through $queryRaw helpers in lib/geo.ts.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis, pg_trgm]
+}
+
+// ─────────────────────────── Enums ───────────────────────────
+
+enum Locale {
+  uz
+  ru
+  en
+}
+
+enum Role {
+  USER
+  OWNER
+  MODERATOR
+  ADMIN
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  HIDDEN
+}
+
+enum EstablishmentType {
+  RESTAURANT
+  CAFE
+  FAST_FOOD
+  BAKERY
+  COFFEE_SHOP
+  TEA_HOUSE // choyxona
+  STREET_FOOD
+  CANTEEN // oshxona/stolovaya
+  DESSERT_SHOP
+  BAR
+  OTHER
+}
+
+enum PriceBucket {
+  BUDGET // under 50 000 UZS
+  MODERATE // 50–100k
+  UPSCALE // 100–200k
+  PREMIUM // 200k+
+}
+
+enum ClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ClaimEvidenceType {
+  PHONE_VERIFICATION
+  DOCUMENT
+  UTILITY_BILL
+  OTHER
+}
+
+// ─────────────────────────── Geography ───────────────────────────
+
+model Region {
+  id     String @id @default(uuid())
+  code   String @unique // e.g. "TAS", "SAM"
+  cities City[]
+
+  translations RegionTranslation[]
+}
+
+model RegionTranslation {
+  regionId String
+  locale   Locale
+  name     String
+  region   Region @relation(fields: [regionId], references: [id], onDelete: Cascade)
+
+  @@id([regionId, locale])
+}
+
+model City {
+  id       String @id @default(uuid())
+  regionId String
+  slug     String @unique // "tashkent"
+  lat      Float
+  lng      Float
+
+  region      Region            @relation(fields: [regionId], references: [id])
+  districts   District[]
+  restaurants Restaurant[]
+  translations CityTranslation[]
+
+  @@index([regionId])
+}
+
+model CityTranslation {
+  cityId String
+  locale Locale
+  name   String
+  city   City   @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@id([cityId, locale])
+}
+
+model District {
+  id     String @id @default(uuid())
+  cityId String
+  slug   String
+
+  city         City                  @relation(fields: [cityId], references: [id])
+  restaurants  Restaurant[]
+  translations DistrictTranslation[]
+
+  @@unique([cityId, slug])
+}
+
+model DistrictTranslation {
+  districtId String
+  locale     Locale
+  name       String
+  district   District @relation(fields: [districtId], references: [id], onDelete: Cascade)
+
+  @@id([districtId, locale])
+}
+
+// ─────────────────────────── Taxonomy ───────────────────────────
+
+model Cuisine {
+  id   String @id @default(uuid())
+  slug String @unique // "uzbek", "italian", "korean"
+
+  restaurants  RestaurantCuisine[]
+  translations CuisineTranslation[]
+}
+
+model CuisineTranslation {
+  cuisineId String
+  locale    Locale
+  name      String
+  cuisine   Cuisine @relation(fields: [cuisineId], references: [id], onDelete: Cascade)
+
+  @@id([cuisineId, locale])
+}
+
+model Allergen {
+  id   String @id @default(uuid())
+  slug String @unique // "nuts", "dairy", "gluten"
+
+  items        MenuItemAllergen[]
+  translations AllergenTranslation[]
+}
+
+model AllergenTranslation {
+  allergenId String
+  locale     Locale
+  name       String
+  allergen   Allergen @relation(fields: [allergenId], references: [id], onDelete: Cascade)
+
+  @@id([allergenId, locale])
+}
+
+// ─────────────────────────── Restaurant core ───────────────────────────
+
+model Restaurant {
+  id         String            @id @default(uuid())
+  slug       String            @unique // latin, immutable after publish
+  type       EstablishmentType @default(RESTAURANT)
+  cityId     String
+  districtId String?
+  address    String
+  // PostGIS point; also mirrored as lat/lng for simple reads
+  location   Unsupported("geography(Point,4326)")?
+  lat        Float
+  lng        Float
+
+  phone     String?
+  telegram  String? // @handle or t.me link
+  instagram String?
+  website   String?
+
+  priceBucket   PriceBucket @default(MODERATE)
+  avgCheckUzs   Int? // average price per person, UZS
+  coverImageUrl String?
+
+  // Denormalized rating cache (recomputed by job/trigger on review change)
+  ratingAvg        Float @default(0)
+  ratingFood       Float @default(0)
+  ratingService    Float @default(0)
+  ratingAtmosphere Float @default(0)
+  ratingPrice      Float @default(0)
+  reviewCount      Int   @default(0)
+
+  // Search: normalized latin+cyrillic concatenation of names/cuisines/dishes
+  searchText String @default("")
+
+  status         ModerationStatus @default(PENDING)
+  verifiedOwner  Boolean          @default(false)
+  lastVerifiedAt DateTime? // data-freshness score input
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  city         City                    @relation(fields: [cityId], references: [id])
+  district     District?               @relation(fields: [districtId], references: [id])
+  translations RestaurantTranslation[]
+  attributes   RestaurantAttributes?
+  hours        WorkingHours[]
+  photos       RestaurantPhoto[]
+  cuisines     RestaurantCuisine[]
+  categories   MenuCategory[]
+  reviews      Review[]
+  favorites    Favorite[]
+  listItems    ListItem[]
+  claims       OwnerClaim[]
+  promotions   Promotion[]
+  stats        RestaurantDailyStat[]
+
+  @@index([cityId, status])
+  @@index([districtId])
+  @@index([priceBucket])
+  @@index([ratingAvg])
+  // GIN trigram index on searchText added in raw SQL migration
+}
+
+model RestaurantTranslation {
+  restaurantId String
+  locale       Locale
+  name         String
+  description  String? @db.Text
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@id([restaurantId, locale])
+  @@index([name])
+}
+
+model RestaurantAttributes {
+  restaurantId   String  @id
+  delivery       Boolean @default(false)
+  takeaway       Boolean @default(false)
+  dineIn         Boolean @default(true)
+  parking        Boolean @default(false)
+  wifi           Boolean @default(false)
+  outdoorSeating Boolean @default(false)
+  kidsArea       Boolean @default(false)
+  halal          Boolean @default(false)
+  vegetarian     Boolean @default(false)
+  vegan          Boolean @default(false)
+  cardsAccepted  Boolean @default(true)
+  is24h          Boolean @default(false)
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+model WorkingHours {
+  id           String  @id @default(uuid())
+  restaurantId String
+  dayOfWeek    Int // 0 = Monday … 6 = Sunday
+  opensAt      String? // "09:00" (null + is24h on attributes = always open)
+  closesAt     String? // "23:00"; closesAt < opensAt = past midnight
+  isClosed     Boolean @default(false) // day off
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, dayOfWeek])
+}
+
+model RestaurantPhoto {
+  id           String           @id @default(uuid())
+  restaurantId String
+  url          String
+  alt          String?
+  sortOrder    Int              @default(0)
+  uploadedById String?
+  status       ModerationStatus @default(PENDING)
+  createdAt    DateTime         @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  uploadedBy User?      @relation(fields: [uploadedById], references: [id])
+
+  @@index([restaurantId, status, sortOrder])
+}
+
+model RestaurantCuisine {
+  restaurantId String
+  cuisineId    String
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  cuisine    Cuisine    @relation(fields: [cuisineId], references: [id], onDelete: Cascade)
+
+  @@id([restaurantId, cuisineId])
+  @@index([cuisineId])
+}
+
+// ─────────────────────────── Menu ───────────────────────────
+
+model MenuCategory {
+  id           String  @id @default(uuid())
+  restaurantId String
+  slug         String // "breakfast", "national-dishes"
+  sortOrder    Int     @default(0)
+  isActive     Boolean @default(true)
+
+  restaurant   Restaurant                @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items        MenuItem[]
+  translations MenuCategoryTranslation[]
+
+  @@unique([restaurantId, slug])
+}
+
+model MenuCategoryTranslation {
+  categoryId String
+  locale     Locale
+  name       String
+
+  category MenuCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([categoryId, locale])
+}
+
+model MenuItem {
+  id          String  @id @default(uuid())
+  categoryId  String
+  priceUzs    Int
+  currency    String  @default("UZS")
+  weightGrams Int?
+  calories    Int?
+  photoUrl    String?
+  isAvailable Boolean @default(true)
+  isPopular   Boolean @default(false)
+  isSeasonal  Boolean @default(false)
+  sortOrder   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  category     MenuCategory          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  translations MenuItemTranslation[]
+  allergens    MenuItemAllergen[]
+
+  @@index([categoryId, sortOrder])
+  @@index([priceUzs])
+}
+
+model MenuItemTranslation {
+  itemId      String
+  locale      Locale
+  name        String
+  description String? @db.Text
+  ingredients String? @db.Text
+
+  item MenuItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, locale])
+  @@index([name]) // dish search
+}
+
+model MenuItemAllergen {
+  itemId     String
+  allergenId String
+
+  item     MenuItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  allergen Allergen @relation(fields: [allergenId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, allergenId])
+}
+
+// ─────────────────────────── Users, reviews, lists ───────────────────────────
+
+model User {
+  id          String   @id @default(uuid())
+  email       String?  @unique
+  phone       String?  @unique
+  name        String?
+  avatarUrl   String?
+  role        Role     @default(USER)
+  locale      Locale   @default(uz)
+  telegramId  String?  @unique
+  googleId    String?  @unique
+  appleId     String?  @unique // Phase 2 (iOS)
+  isBanned    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  lastSeenAt  DateTime @default(now())
+
+  reviews       Review[]
+  reviewReplies ReviewReply[]
+  favorites     Favorite[]
+  lists         List[]
+  claims        OwnerClaim[]
+  photos        RestaurantPhoto[]
+  auditLogs     AuditLog[]
+  submissions   PlaceSubmission[]
+}
+
+model Review {
+  id           String @id @default(uuid())
+  restaurantId String
+  userId       String
+
+  ratingOverall    Int // 1–5
+  ratingFood       Int?
+  ratingService    Int?
+  ratingAtmosphere Int?
+  ratingPrice      Int?
+  text             String?  @db.Text
+  visitDate        DateTime?
+  isVerifiedVisit  Boolean  @default(false)
+
+  status    ModerationStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  restaurant Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  user       User          @relation(fields: [userId], references: [id])
+  photos     ReviewPhoto[]
+  reply      ReviewReply?
+
+  @@unique([restaurantId, userId, createdAt]) // + app-level 1/30-days rule
+  @@index([restaurantId, status, createdAt])
+  @@index([userId])
+}
+
+model ReviewPhoto {
+  id       String           @id @default(uuid())
+  reviewId String
+  url      String
+  status   ModerationStatus @default(PENDING)
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+}
+
+model ReviewReply {
+  id        String   @id @default(uuid())
+  reviewId  String   @unique
+  authorId  String // verified owner
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id])
+}
+
+model Favorite {
+  userId       String
+  restaurantId String
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@id([userId, restaurantId])
+}
+
+model List {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items ListItem[]
+}
+
+model ListItem {
+  listId       String
+  restaurantId String
+  note         String?
+  addedAt      DateTime @default(now())
+
+  list       List       @relation(fields: [listId], references: [id], onDelete: Cascade)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@id([listId, restaurantId])
+}
+
+// ─────────────────────────── Ownership & promotions ───────────────────────────
+
+model OwnerClaim {
+  id           String            @id @default(uuid())
+  restaurantId String
+  userId       String
+  status       ClaimStatus       @default(PENDING)
+  evidenceType ClaimEvidenceType
+  evidenceUrl  String?
+  note         String?
+  reviewedById String?
+  createdAt    DateTime          @default(now())
+  reviewedAt   DateTime?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id])
+
+  @@index([status, createdAt])
+  @@unique([restaurantId, userId])
+}
+
+model Promotion {
+  id           String           @id @default(uuid())
+  restaurantId String
+  title        String
+  description  String?          @db.Text
+  imageUrl     String?
+  startsAt     DateTime
+  endsAt       DateTime
+  status       ModerationStatus @default(PENDING)
+  createdAt    DateTime         @default(now())
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, status, endsAt])
+}
+
+// ─────────────────────────── Analytics & audit ───────────────────────────
+
+model RestaurantDailyStat {
+  restaurantId String
+  date         DateTime @db.Date
+  pageViews    Int      @default(0)
+  searchHits   Int      @default(0)
+  phoneTaps    Int      @default(0)
+  mapTaps      Int      @default(0)
+  telegramTaps Int      @default(0)
+  favoriteAdds Int      @default(0)
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@id([restaurantId, date])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  entityType String // "Restaurant" | "MenuItem" | "Review" | ...
+  entityId   String
+  action     String // "create" | "update" | "approve" | "reject" | "delete"
+  diff       Json? // before/after for rollback
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId, createdAt])
+}
+
+// ─────────────────────────── Community submissions ───────────────────────────
+// "I found a place on my way" — any signed-in user drops a pin, adds the name,
+// category and the owner's phone. A moderator calls the owner, verifies, and
+// approval materializes a real Restaurant row (see admin approve route).
+
+enum SubmissionStatus {
+  PENDING
+  IN_REVIEW // moderator picked it up / calling the owner
+  APPROVED // restaurant created from it
+  REJECTED
+  DUPLICATE // matched an existing listing
+}
+
+model PlaceSubmission {
+  id         String            @id @default(uuid())
+  userId     String
+  name       String
+  type       EstablishmentType @default(CAFE)
+  ownerPhone String // +998 XX XXX-XX-XX — moderator verification call
+  note       String?           @db.Text
+  photoUrl   String?
+  lat        Float
+  lng        Float
+  cityId     String?
+  status     SubmissionStatus  @default(PENDING)
+
+  reviewedById        String?
+  rejectionReason     String?
+  createdRestaurantId String? // set on approval
+  createdAt           DateTime  @default(now())
+  reviewedAt          DateTime?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([status, createdAt])
+  @@index([lat, lng]) // cheap dedupe radius check before PostGIS pass
+}

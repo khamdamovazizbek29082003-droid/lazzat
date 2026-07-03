@@ -19,6 +19,19 @@ export function ReviewList({ reviews }: { reviews: Review[] }) {
             {r.mine && <span className="text-xs font-semibold text-turquoise">● {t("pending_review")}</span>}
           </div>
           {r.text && <p className="mt-0.5 text-sm text-[var(--text-sub)]">{r.text}</p>}
+          {r.media && r.media.length > 0 && (
+            <div className="mt-1.5 flex gap-1.5 overflow-x-auto">
+              {r.media.map((m, i) =>
+                m.type === "VIDEO" ? (
+                  // eslint-disable-next-line jsx-a11y/media-has-caption
+                  <video key={i} src={m.url} className="h-16 w-16 shrink-0 rounded-lg object-cover" controls />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={i} src={m.url} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" />
+                ),
+              )}
+            </div>
+          )}
         </div>
       ))}
     </div>

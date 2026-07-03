@@ -306,7 +306,14 @@ export function MapExplorer({ initialSlug }: { initialSlug?: string }) {
     map.setStyle(next === "satellite" ? SATELLITE_STYLE : STYLE_URL);
   };
 
-  const submitDraft = async (input: { name: string; type: EstablishmentType; ownerPhone: string; note?: string }) => {
+  const submitDraft = async (input: {
+    name: string;
+    type: EstablishmentType;
+    ownerPhone: string;
+    note?: string;
+    photoUrls?: string[];
+    videoUrls?: string[];
+  }) => {
     if (!draft) return;
     const submission = await createSubmission({ ...input, lat: draft.lat, lng: draft.lng });
     setMyPending((prev) => [

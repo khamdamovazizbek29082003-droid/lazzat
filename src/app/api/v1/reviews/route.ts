@@ -12,6 +12,8 @@ const Body = z.object({
   ratingPrice: z.number().int().min(1).max(5).optional(),
   text: z.string().max(3000).optional(),
   visitDate: z.coerce.date().optional(),
+  photoUrls: z.array(z.string().url()).max(6).optional(),
+  videoUrls: z.array(z.string().url()).max(2).optional(),
 });
 
 /** POST /api/v1/reviews — creates a PENDING review; moderation publishes it. */
@@ -22,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  const data = parsed.data;
+  const { photoUrls, videoUrls, ...data } = parsed.data;
 
   // One review per user per restaurant per 30 days
   const monthAgo = new Date(Date.now() - 30 * 86400_000);
@@ -34,7 +36,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "You already reviewed this place recently." }, { status: 429 });
   }
 
-  const review = await db.review.create({ data: { ...data, userId, status: "PENDING" } });
-  // Rating aggregates recompute in a background job when the review is APPROVED.
+  const media = [
+    ...(photoUrls ?? []).map((url) => ({ url, type: "PHOTO" as const })),
+    ...(videoUrls ?? []).map((url) => ({ url, type: "VIDEO" as const })),
+  ];
+
+  const review = await db.review.create({
+    data: { ...data, userId, status: "PENDING", media: { create: media } },
+    include: { media: true },
+  });
+  // Rating aggregates recompute when the review is APPROVED (see admin review queue route).
   return NextResponse.json({ review }, { status: 201 });
 }

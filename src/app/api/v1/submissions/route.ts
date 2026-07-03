@@ -21,7 +21,8 @@ const Body = z.object({
   lat: z.number().min(37).max(46),   // Uzbekistan bounds
   lng: z.number().min(55).max(74),
   note: z.string().max(500).optional(),
-  photoUrl: z.string().url().optional(),
+  photoUrls: z.array(z.string().url()).max(6).optional(),
+  videoUrls: z.array(z.string().url()).max(2).optional(),
 });
 
 export async function POST(req: NextRequest) {

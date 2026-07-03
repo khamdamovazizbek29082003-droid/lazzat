@@ -79,10 +79,17 @@ const dict = {
   cancel_add_place: { uz: "✕ Bekor qilish", ru: "✕ Отменить", en: "✕ Cancel" },
   admin_queue: { uz: "Tekshirish navbati", ru: "Очередь модерации", en: "Verification queue" },
   admin_button: { uz: "Admin", ru: "Админ", en: "Admin" },
+  admin_tab_places: { uz: "Joylar", ru: "Места", en: "Places" },
+  admin_tab_reviews: { uz: "Sharhlar", ru: "Отзывы", en: "Reviews" },
   admin_empty: {
     uz: "Navbat bo'sh ✓ — «＋ Joy qo'shish» orqali yangi taklif yuboring.",
     ru: "Очередь пуста ✓ — отправьте новое место через «Добавить место».",
     en: "Queue is empty ✓ — submit a new place with “Add a place”.",
+  },
+  admin_reviews_empty: {
+    uz: "Tekshiriladigan sharh yo'q ✓",
+    ru: "Отзывов на проверку нет ✓",
+    en: "No reviews awaiting moderation ✓",
   },
   call_owner: { uz: "Egasiga qo'ng'iroq", ru: "Позвонить владельцу", en: "Call the owner" },
   approve: { uz: "Tasdiqlash", ru: "Одобрить", en: "Approve" },
@@ -110,6 +117,7 @@ const dict = {
     ru: "Ориентир, часы работы…",
     en: "Landmark, hours…",
   },
+  field_media: { uz: "Rasm yoki video (ixtiyoriy)", ru: "Фото или видео (необязательно)", en: "Photos or video (optional)" },
   submit_for_review: { uz: "Tekshiruvga yuborish", ru: "Отправить на проверку", en: "Submit for review" },
   submit_hint: {
     uz: "Yuborilgach pin sariq «Tekshirilmoqda» holatida turadi. Moderator egasiga qo'ng'iroq qilib tasdiqlagach — jonli bo'ladi.",
@@ -176,6 +184,7 @@ const dict = {
   sign_out: { uz: "Chiqish", ru: "Выйти", en: "Sign out" },
   sign_in_telegram: { uz: "Telegram", ru: "Telegram", en: "Telegram" },
   telegram_waiting: { uz: "Botda tasdiqlang…", ru: "Подтвердите в боте…", en: "Confirm in bot…" },
+  signed_in_as: { uz: "Kirgan hisob", ru: "Вы вошли как", en: "Signed in as" },
 } as const satisfies Record<string, Record<Locale, string>>;
 
 export type DictKey = keyof typeof dict;

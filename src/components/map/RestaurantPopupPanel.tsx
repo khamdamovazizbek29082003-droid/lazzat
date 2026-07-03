@@ -4,22 +4,27 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useLocale, useT } from "@/components/providers/LocaleProvider";
-import { createReview, getRestaurant } from "@/lib/data/client";
+import { getRestaurant } from "@/lib/data/client";
 import { photoForType } from "@/lib/data/photos";
 import type { RestaurantDetail } from "@/lib/data/types";
 import { formatUzs } from "@/lib/data/utils";
 import { ReviewList } from "@/components/restaurant/ReviewList";
 import { StarRating } from "@/components/restaurant/StarRating";
+import { InlineSignIn } from "@/components/restaurant/InlineSignIn";
+import { MediaUploader } from "@/components/shared/MediaUploader";
+import { useReviewComposer } from "@/lib/hooks/useReviewComposer";
 import { Panel } from "./Panel";
 
 export function RestaurantPopupPanel({ slug, onClose }: { slug: string; onClose: () => void }) {
   const { locale } = useLocale();
   const t = useT();
   const [restaurant, setRestaurant] = useState<RestaurantDetail | null>(null);
-  const [stars, setStars] = useState(0);
-  const [text, setText] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [photoFailed, setPhotoFailed] = useState(false);
+
+  const { stars, setStars, text, setText, media, setMedia, error, submitting, needsSignIn, submit } = useReviewComposer(
+    restaurant?.id ?? "",
+    (review) => setRestaurant((r) => (r ? { ...r, reviews: [review, ...r.reviews], reviewCount: r.reviewCount + 1 } : r)),
+  );
 
   useEffect(() => {
     let active = true;
@@ -45,19 +50,6 @@ export function RestaurantPopupPanel({ slug, onClose }: { slug: string; onClose:
     .filter((i) => i.isPopular)
     .slice(0, 3);
   const photo = photoForType(restaurant.type);
-
-  const submitReview = async () => {
-    if (!stars) return setError(t("error_stars_required"));
-    try {
-      const review = await createReview(restaurant.id, { ratingOverall: stars, text: text.trim() || undefined });
-      setRestaurant((r) => (r ? { ...r, reviews: [review, ...r.reviews], reviewCount: r.reviewCount + 1 } : r));
-      setStars(0);
-      setText("");
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error && err.message === "error_sign_in_required" ? t("error_sign_in_required") : t("error_generic"));
-    }
-  };
 
   return (
     <Panel
@@ -136,10 +128,21 @@ export function RestaurantPopupPanel({ slug, onClose }: { slug: string; onClose:
           rows={2}
           className="mt-1.5 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] p-2 text-sm text-[var(--text)] outline-none focus:border-cobalt"
         />
-        {error && <p className="mt-1 text-xs font-semibold text-anor">{error}</p>}
-        <button onClick={submitReview} className="mt-1.5 w-full rounded-lg bg-cobalt py-1.5 text-sm font-bold text-white">
-          {t("submit_review")}
-        </button>
+        <div className="mt-1.5">
+          <MediaUploader value={media} onChange={setMedia} />
+        </div>
+        {error && <p className="mt-1 text-xs font-semibold text-anor">{t(error)}</p>}
+        {needsSignIn ? (
+          <InlineSignIn />
+        ) : (
+          <button
+            onClick={submit}
+            disabled={submitting}
+            className="mt-1.5 w-full rounded-lg bg-cobalt py-1.5 text-sm font-bold text-white disabled:opacity-60"
+          >
+            {t("submit_review")}
+          </button>
+        )}
       </div>
 
       <div className="mt-3 max-h-40 overflow-y-auto border-t border-[var(--border)] pt-3">

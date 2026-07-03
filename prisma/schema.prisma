@@ -489,7 +489,7 @@ model Review {
 
   restaurant Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   user       User          @relation(fields: [userId], references: [id])
-  photos     ReviewPhoto[]
+  media      ReviewMedia[]
   reply      ReviewReply?
 
   @@unique([restaurantId, userId, createdAt]) // + app-level 1/30-days rule
@@ -497,10 +497,16 @@ model Review {
   @@index([userId])
 }
 
-model ReviewPhoto {
+enum MediaType {
+  PHOTO
+  VIDEO
+}
+
+model ReviewMedia {
   id       String           @id @default(uuid())
   reviewId String
   url      String
+  type     MediaType        @default(PHOTO)
   status   ModerationStatus @default(PENDING)
 
   review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
@@ -639,7 +645,8 @@ model PlaceSubmission {
   type       EstablishmentType @default(CAFE)
   ownerPhone String // +998 XX XXX-XX-XX — moderator verification call
   note       String?           @db.Text
-  photoUrl   String?
+  photoUrls  String[]          @default([])
+  videoUrls  String[]          @default([])
   lat        Float
   lng        Float
   cityId     String?

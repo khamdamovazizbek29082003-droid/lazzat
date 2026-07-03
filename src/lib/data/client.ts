@@ -14,6 +14,7 @@ import type {
   MapData,
   MapMarker,
   NearbyFilters,
+  PendingReview,
   PlaceSubmission,
   PlaceSubmissionInput,
   Review,
@@ -140,6 +141,8 @@ function mapDetail(r: any): RestaurantDetail {
       text: rev.text ?? undefined,
       createdAt: rev.createdAt,
       isVerifiedVisit: rev.isVerifiedVisit,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      media: (rev.media ?? []).map((m: any) => ({ url: m.url, type: m.type })),
     })),
   };
 }
@@ -324,6 +327,37 @@ export async function createReview(restaurantId: string, input: CreateReviewInpu
     ratingPrice: review.ratingPrice ?? undefined,
     text: review.text ?? undefined,
     createdAt: typeof review.createdAt === "string" ? review.createdAt : new Date(review.createdAt).toISOString(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    media: (review.media ?? []).map((m: any) => ({ url: m.url, type: m.type })),
     mine: true,
   };
+}
+
+/** mirrors GET /api/v1/admin/queues/reviews — returns [] if not a signed-in moderator. */
+export async function listReviewQueue(): Promise<PendingReview[]> {
+  const res = await fetch(apiUrl("/api/v1/admin/queues/reviews"), { cache: "no-store" });
+  if (!res.ok) return [];
+  const { items } = await res.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return items.map((r: any) => ({
+    id: r.id,
+    restaurantSlug: r.restaurant?.slug ?? "",
+    restaurantName: r.restaurant?.translations?.[0]?.name ?? "",
+    userName: r.user?.name ?? "—",
+    ratingOverall: r.ratingOverall,
+    text: r.text ?? undefined,
+    createdAt: typeof r.createdAt === "string" ? r.createdAt : new Date(r.createdAt).toISOString(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    media: (r.media ?? []).map((m: any) => ({ url: m.url, type: m.type })),
+  }));
+}
+
+/** mirrors POST /api/v1/admin/queues/reviews/:id */
+export async function decideReview(id: string, action: "approve" | "reject"): Promise<void> {
+  const res = await fetch(apiUrl(`/api/v1/admin/queues/reviews/${id}`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action }),
+  });
+  if (!res.ok) throw new Error(await errorFrom(res, "Failed to update review"));
 }

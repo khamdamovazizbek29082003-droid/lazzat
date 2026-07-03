@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { useT } from "@/components/providers/LocaleProvider";
 import { CATEGORY_EMOJI, type EstablishmentType } from "@/lib/data/types";
 import { isValidOwnerPhone } from "@/lib/data/utils";
+import { MediaUploader, type UploadedMedia } from "@/components/shared/MediaUploader";
 import { Panel } from "./Panel";
 
 const TYPES: EstablishmentType[] = [
@@ -41,13 +42,21 @@ export function AddPlaceForm({
   lat: number;
   lng: number;
   onCancel: () => void;
-  onSubmit: (input: { name: string; type: EstablishmentType; ownerPhone: string; note?: string }) => Promise<void> | void;
+  onSubmit: (input: {
+    name: string;
+    type: EstablishmentType;
+    ownerPhone: string;
+    note?: string;
+    photoUrls?: string[];
+    videoUrls?: string[];
+  }) => Promise<void> | void;
 }) {
   const t = useT();
   const [name, setName] = useState("");
   const [type, setType] = useState<EstablishmentType>("CAFE");
   const [phone, setPhone] = useState("+998");
   const [note, setNote] = useState("");
+  const [media, setMedia] = useState<UploadedMedia[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -57,7 +66,14 @@ export function AddPlaceForm({
     setSubmitting(true);
     setError(null);
     try {
-      await onSubmit({ name: name.trim(), type, ownerPhone: phone.replace(/[\s-]/g, ""), note: note.trim() || undefined });
+      await onSubmit({
+        name: name.trim(),
+        type,
+        ownerPhone: phone.replace(/[\s-]/g, ""),
+        note: note.trim() || undefined,
+        photoUrls: media.filter((m) => m.type === "PHOTO").map((m) => m.url),
+        videoUrls: media.filter((m) => m.type === "VIDEO").map((m) => m.url),
+      });
     } catch (err) {
       setError(err instanceof Error && err.message === "error_sign_in_required" ? t("error_sign_in_required") : t("error_generic"));
     } finally {
@@ -104,6 +120,9 @@ export function AddPlaceForm({
           placeholder={t("field_note_placeholder")}
           className={inputCls}
         />
+      </Field>
+      <Field label={t("field_media")}>
+        <MediaUploader value={media} onChange={setMedia} />
       </Field>
       {error && <p className="mb-2 text-xs font-semibold text-anor">{error}</p>}
       <button

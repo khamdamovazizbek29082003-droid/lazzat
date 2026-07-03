@@ -61,6 +61,7 @@ export interface Review {
   createdAt: string;
   isVerifiedVisit?: boolean;
   mine?: boolean;
+  media?: { url: string; type: "PHOTO" | "VIDEO" }[];
 }
 
 export interface RestaurantAttributes {
@@ -135,6 +136,8 @@ export interface PlaceSubmissionInput {
   lat: number;
   lng: number;
   note?: string;
+  photoUrls?: string[];
+  videoUrls?: string[];
 }
 
 export interface PlaceSubmission extends PlaceSubmissionInput {
@@ -168,6 +171,19 @@ export interface CreateReviewInput {
   ratingAtmosphere?: number;
   ratingPrice?: number;
   text?: string;
+  photoUrls?: string[];
+  videoUrls?: string[];
+}
+
+export interface PendingReview {
+  id: string;
+  restaurantSlug: string;
+  restaurantName: string;
+  userName: string;
+  ratingOverall: number;
+  text?: string;
+  createdAt: string;
+  media: { url: string; type: "PHOTO" | "VIDEO" }[];
 }
 
 export const CATEGORY_EMOJI: Record<EstablishmentType, string> = {

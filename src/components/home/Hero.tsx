@@ -1,12 +1,39 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useT } from "@/components/providers/LocaleProvider";
 import { displayFont } from "@/lib/fonts";
+import { DISH_PHOTOS, type DishPhotoKey } from "@/lib/data/photos";
 import { Ikat } from "@/components/layout/Ikat";
-import { DishMedallion } from "./DishMedallion";
 
-const IKAT_PATTERN =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 3 L41 22 L22 41 L3 22 Z' fill='none' stroke='white' stroke-width='1.6'/%3E%3C/svg%3E\")";
+const SLIDESHOW: DishPhotoKey[] = ["plov", "shashlik", "somsa", "manti", "lagman", "non"];
+const SLIDE_INTERVAL_MS = 2000;
+const FADE_MS = 900;
+
+function SlidePhoto({ dishKey, active, priority }: { dishKey: DishPhotoKey; active: boolean; priority?: boolean }) {
+  const [failed, setFailed] = useState(false);
+  const photo = DISH_PHOTOS[dishKey];
+
+  return (
+    <div
+      className={`absolute inset-0 transition-opacity ease-in-out ${active ? "opacity-100" : "opacity-0"}`}
+      style={{ transitionDuration: `${FADE_MS}ms` }}
+    >
+      {!failed && (
+        <Image
+          src={photo.url}
+          alt={photo.name.en}
+          fill
+          unoptimized
+          priority={priority}
+          className="object-cover"
+          onError={() => setFailed(true)}
+        />
+      )}
+    </div>
+  );
+}
 
 export function Hero({
   value,
@@ -20,76 +47,72 @@ export function Hero({
   cityCount: number;
 }) {
   const t = useT();
-  const [headlineLead, headlineAccent] = t("hero_title").split(" — ");
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setIndex((i) => (i + 1) % SLIDESHOW.length), SLIDE_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
 
   return (
-    <div className="relative overflow-hidden rounded-3xl shadow-lg">
-      {/* Warm terracotta-to-saffron gradient — a deliberate break from the cobalt brand color,
-          reaching instead for ceramics/ikat/plov warmth. */}
-      <div className="absolute inset-0 bg-gradient-to-br from-anor via-[#c1552b] to-saffron" />
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.08]"
-        style={{ backgroundImage: IKAT_PATTERN, backgroundSize: "44px 44px" }}
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
+    <div className="relative min-h-[320px] overflow-hidden rounded-3xl shadow-lg sm:min-h-[380px]">
+      {/* Full-bleed rotating dish photos, crossfading — replaces the old gradient + medallion. */}
+      <div className="absolute inset-0">
+        {SLIDESHOW.map((key, i) => (
+          <SlidePhoto key={key} dishKey={key} active={i === index} priority={i === 0} />
+        ))}
+      </div>
+      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-black/10" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/10 to-transparent" />
 
-      <div className="relative grid gap-10 px-6 py-12 sm:px-10 sm:py-16 lg:grid-cols-[1.3fr_1fr] lg:items-center">
-        <div>
-          <h1
-            className={`${displayFont.className} animate-rise-in max-w-xl text-3xl leading-[1.15] font-extrabold text-white sm:text-4xl lg:text-[2.75rem]`}
+      <div className="relative flex min-h-[320px] flex-col justify-end px-6 py-7 sm:min-h-[380px] sm:px-10 sm:py-9">
+        <div className="animate-rise-in mb-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur">
+          <Ikat size={10} color="#D68F27" bg="transparent" />
+          {t("brand_tagline")}
+        </div>
+        <h1 className={`${displayFont.className} animate-rise-in max-w-lg text-base leading-snug font-bold text-white sm:text-lg`}>
+          {t("hero_title")}
+        </h1>
+        <p
+          className="animate-rise-in mt-1.5 max-w-md text-xs leading-relaxed text-white/85 sm:text-sm"
+          style={{ animationDelay: "80ms" }}
+        >
+          {t("hero_subtitle")}
+        </p>
+
+        <div
+          className="animate-rise-in mt-5 flex max-w-xl items-center gap-2 rounded-full bg-white p-1.5 shadow-xl"
+          style={{ animationDelay: "150ms" }}
+        >
+          <input
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={t("search_placeholder")}
+            className="flex-1 bg-transparent px-4 py-2.5 text-[#17202b] placeholder-gray-400 outline-none"
+          />
+          <button
+            aria-label={t("search_placeholder")}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-anor text-white shadow-md transition-transform duration-200 hover:scale-105 hover:brightness-110 active:scale-95"
           >
-            {headlineLead}
-            {headlineAccent && (
-              <>
-                <br />
-                <span className="relative mt-1 inline-block">
-                  <span className="relative z-10 text-white">{headlineAccent}</span>
-                  <span className="absolute inset-x-0 -bottom-0.5 -z-0 h-[0.42em] -rotate-1 rounded-sm bg-cobalt-deep/60 sm:-bottom-1" />
-                </span>
-              </>
-            )}
-          </h1>
-          <p className="animate-rise-in mt-5 max-w-md text-sm leading-relaxed text-white/90 sm:text-base" style={{ animationDelay: "100ms" }}>
-            {t("hero_subtitle")}
-          </p>
-
-          <div
-            className="animate-rise-in mt-7 flex max-w-xl items-center gap-2 rounded-full bg-white p-1.5 shadow-xl"
-            style={{ animationDelay: "180ms" }}
-          >
-            <input
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              placeholder={t("search_placeholder")}
-              className="flex-1 bg-transparent px-4 py-2.5 text-[#17202b] placeholder-gray-400 outline-none"
-            />
-            <button
-              aria-label={t("search_placeholder")}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-anor text-white shadow-md transition-transform duration-200 hover:scale-105 hover:brightness-110 active:scale-95"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="7" />
-                <line x1="21" y1="21" x2="16.65" y2="16.65" />
-              </svg>
-            </button>
-          </div>
-
-          <div className="animate-rise-in mt-7 flex flex-wrap gap-3" style={{ animationDelay: "260ms" }}>
-            <span className="flex cursor-default items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-anor shadow-md">
-              <Ikat size={12} color="#B4322E" bg="#fff" /> {placeCount}+ {t("hero_stat_places")}
-            </span>
-            <span className="flex cursor-default items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-bold text-white ring-1 ring-white/40 backdrop-blur">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11Z" />
-                <circle cx="12" cy="10" r="2.5" />
-              </svg>
-              {cityCount} {t("hero_stat_cities")}
-            </span>
-          </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+          </button>
         </div>
 
-        {/* Stamped photo medallion — page-flips between national dishes every ~2.8s. */}
-        <DishMedallion />
+        <div className="animate-rise-in mt-4 flex flex-wrap gap-2.5" style={{ animationDelay: "220ms" }}>
+          <span className="flex cursor-default items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-xs font-bold text-anor shadow-md sm:text-sm">
+            <Ikat size={10} color="#B4322E" bg="#fff" /> {placeCount}+ {t("hero_stat_places")}
+          </span>
+          <span className="flex cursor-default items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-1.5 text-xs font-bold text-white ring-1 ring-white/40 backdrop-blur sm:text-sm">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 21s-7-5.686-7-11a7 7 0 0 1 14 0c0 5.314-7 11-7 11Z" />
+              <circle cx="12" cy="10" r="2.5" />
+            </svg>
+            {cityCount} {t("hero_stat_cities")}
+          </span>
+        </div>
       </div>
 
       <span className="absolute right-3 bottom-2 text-[10px] font-medium text-white/70">{t("photo_credits_hint")}</span>

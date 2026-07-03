@@ -1,14 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { upload } from "@vercel/blob/client";
 import { useT } from "@/components/providers/LocaleProvider";
 
 export type UploadedMedia = { url: string; type: "PHOTO" | "VIDEO" };
 
-const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
-
-/** Uploads directly to Cloudinary from the browser via an unsigned preset — no server round-trip. */
+/** Uploads directly from the browser to Vercel Blob storage via a short-lived client token. */
 export function MediaUploader({
   value,
   onChange,
@@ -24,9 +22,6 @@ export function MediaUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Media upload isn't configured yet — hide the control rather than offer a dead button.
-  if (!CLOUD_NAME || !UPLOAD_PRESET) return null;
 
   const photoCount = value.filter((m) => m.type === "PHOTO").length;
   const videoCount = value.filter((m) => m.type === "VIDEO").length;
@@ -44,16 +39,11 @@ export function MediaUploader({
         if (isVideo && currentVideos >= maxVideos) continue;
         if (!isVideo && currentPhotos >= maxPhotos) continue;
 
-        const form = new FormData();
-        form.append("file", file);
-        form.append("upload_preset", UPLOAD_PRESET);
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
-          method: "POST",
-          body: form,
+        const blob = await upload(file.name, file, {
+          access: "public",
+          handleUploadUrl: "/api/upload",
         });
-        if (!res.ok) throw new Error("Upload failed");
-        const data = await res.json();
-        uploaded.push({ url: data.secure_url, type: data.resource_type === "video" ? "VIDEO" : "PHOTO" });
+        uploaded.push({ url: blob.url, type: isVideo ? "VIDEO" : "PHOTO" });
       }
       onChange([...value, ...uploaded]);
     } catch {

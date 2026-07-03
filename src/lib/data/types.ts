@@ -175,6 +175,18 @@ export interface CreateReviewInput {
   videoUrls?: string[];
 }
 
+export interface AdminRestaurant {
+  id: string;
+  slug: string;
+  type: EstablishmentType;
+  names: TranslatedText;
+  cityName: string;
+  address: string;
+  phone?: string;
+  priceBucket: PriceBucket;
+  attributes: RestaurantAttributes;
+}
+
 export interface PendingReview {
   id: string;
   restaurantSlug: string;

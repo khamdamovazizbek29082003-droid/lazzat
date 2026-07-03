@@ -11,7 +11,9 @@ export function MediaUploader({
   value,
   onChange,
   maxPhotos = 6,
-  maxVideos = 2,
+  // Video capture is scaffolded end to end (this prop, the upload route, the schema) but
+  // disabled for now — pass a positive number to re-enable once storage/limits are settled.
+  maxVideos = 0,
 }: {
   value: UploadedMedia[];
   onChange: (media: UploadedMedia[]) => void;
@@ -91,7 +93,7 @@ export function MediaUploader({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*,video/*"
+        accept="image/*"
         multiple
         hidden
         onChange={(e) => e.target.files && handleFiles(e.target.files)}

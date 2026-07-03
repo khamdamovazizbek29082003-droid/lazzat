@@ -2,17 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { useT } from "@/components/providers/LocaleProvider";
-import { decideReview, decideSubmission, listReviewQueue, listSubmissionQueue } from "@/lib/data/client";
-import { CATEGORY_EMOJI, type PendingReview, type PlaceSubmission } from "@/lib/data/types";
+import { decideReview, decideSubmission, listReviewQueue, listSubmissionQueue, searchAdminRestaurants } from "@/lib/data/client";
+import { CATEGORY_EMOJI, type AdminRestaurant, type PendingReview, type PlaceSubmission } from "@/lib/data/types";
 import { StarRating } from "@/components/restaurant/StarRating";
+import { EditRestaurantPanel } from "./EditRestaurantPanel";
 
-type Tab = "places" | "reviews";
+type Tab = "places" | "reviews" | "restaurants";
 
 export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; onDecided: () => void }) {
   const t = useT();
   const [tab, setTab] = useState<Tab>("places");
   const [items, setItems] = useState<PlaceSubmission[]>([]);
   const [reviews, setReviews] = useState<PendingReview[]>([]);
+  const [restaurantQuery, setRestaurantQuery] = useState("");
+  const [restaurants, setRestaurants] = useState<AdminRestaurant[]>([]);
+  const [editing, setEditing] = useState<AdminRestaurant | null>(null);
 
   const refresh = () => {
     listSubmissionQueue().then(setItems);
@@ -21,6 +25,11 @@ export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; 
   useEffect(() => {
     refresh();
   }, []);
+
+  useEffect(() => {
+    if (tab !== "restaurants") return;
+    searchAdminRestaurants(restaurantQuery).then(setRestaurants);
+  }, [tab, restaurantQuery]);
 
   const decidePlace = async (id: string, action: "approve" | "reject") => {
     await decideSubmission(id, action);
@@ -62,6 +71,14 @@ export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; 
           }`}
         >
           {t("admin_tab_reviews")} {reviews.length ? `(${reviews.length})` : ""}
+        </button>
+        <button
+          onClick={() => setTab("restaurants")}
+          className={`flex-1 rounded-full py-1.5 text-xs font-bold transition ${
+            tab === "restaurants" ? "bg-cobalt text-white" : "text-[var(--text-sub)]"
+          }`}
+        >
+          {t("admin_tab_restaurants")}
         </button>
       </div>
 
@@ -128,6 +145,49 @@ export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; 
             </div>
           ))}
         </>
+      )}
+
+      {tab === "restaurants" && (
+        <>
+          <input
+            value={restaurantQuery}
+            onChange={(e) => setRestaurantQuery(e.target.value)}
+            placeholder={t("admin_search_placeholder")}
+            className="mb-2.5 w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-cobalt"
+          />
+          {restaurants.map((r) => (
+            <div key={r.id} className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-[var(--border)] p-3">
+              <div className="min-w-0">
+                <div className="truncate font-bold text-[var(--text)]">
+                  {CATEGORY_EMOJI[r.type]} {r.names.uz}
+                </div>
+                <div className="truncate text-xs text-[var(--text-sub)]">{r.cityName}</div>
+              </div>
+              <button
+                onClick={() => setEditing(r)}
+                className="shrink-0 rounded-lg bg-cobalt px-3 py-1.5 text-xs font-bold text-white"
+              >
+                {t("edit")}
+              </button>
+            </div>
+          ))}
+        </>
+      )}
+
+      {editing && (
+        <EditRestaurantPanel
+          restaurant={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(updated) => {
+            setRestaurants((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+            setEditing(null);
+          }}
+          onDeleted={() => {
+            setRestaurants((prev) => prev.filter((r) => r.id !== editing.id));
+            setEditing(null);
+            onDecided();
+          }}
+        />
       )}
     </div>
   );

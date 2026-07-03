@@ -18,7 +18,9 @@ export async function POST(request: Request): Promise<NextResponse> {
         const session = await auth();
         if (!session?.user) throw new Error("Unauthorized");
         return {
-          allowedContentTypes: ["image/jpeg", "image/png", "image/webp", "image/gif", "video/mp4", "video/webm", "video/quicktime"],
+          // Photos only for now — video support is scaffolded (UploadedMedia.type, ReviewMedia.type,
+          // PlaceSubmission.videoUrls) but disabled at the upload boundary until re-enabled.
+          allowedContentTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
           addRandomSuffix: true,
           maximumSizeInBytes: 50 * 1024 * 1024, // 50MB
         };

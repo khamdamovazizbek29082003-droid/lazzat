@@ -8,6 +8,7 @@
 import { isOpenNow, isValidOwnerPhone } from "./utils";
 import { CATEGORY_EMOJI } from "./types";
 import type {
+  AdminRestaurant,
   CreateReviewInput,
   EstablishmentType,
   Locale,
@@ -360,4 +361,56 @@ export async function decideReview(id: string, action: "approve" | "reject"): Pr
     body: JSON.stringify({ action }),
   });
   if (!res.ok) throw new Error(await errorFrom(res, "Failed to update review"));
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapAdminRestaurant(r: any): AdminRestaurant {
+  return {
+    id: r.id,
+    slug: r.slug,
+    type: r.type,
+    names: pickTranslated(r.translations, "name"),
+    cityName: r.city?.translations?.[0]?.name ?? "",
+    address: r.address,
+    phone: r.phone ?? undefined,
+    priceBucket: r.priceBucket,
+    attributes: mapAttributes(r.attributes),
+  };
+}
+
+/** mirrors GET /api/v1/admin/restaurants?q= — returns [] if not a signed-in moderator. */
+export async function searchAdminRestaurants(q: string): Promise<AdminRestaurant[]> {
+  const res = await fetch(apiUrl(`/api/v1/admin/restaurants?q=${encodeURIComponent(q)}`), { cache: "no-store" });
+  if (!res.ok) return [];
+  const { items } = await res.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return items.map((r: any) => mapAdminRestaurant(r));
+}
+
+/** mirrors PATCH /api/v1/admin/restaurants/:id */
+export async function updateRestaurant(
+  id: string,
+  data: {
+    names: TranslatedText;
+    address: string;
+    phone?: string;
+    type: EstablishmentType;
+    priceBucket: RestaurantSummary["priceBucket"];
+    attributes: Pick<RestaurantAttributes, "halal" | "delivery" | "wifi" | "parking" | "outdoorSeating" | "kidsArea" | "is24h">;
+  },
+): Promise<AdminRestaurant> {
+  const res = await fetch(apiUrl(`/api/v1/admin/restaurants/${id}`), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(await errorFrom(res, "Failed to update restaurant"));
+  const { restaurant } = await res.json();
+  return mapAdminRestaurant(restaurant);
+}
+
+/** mirrors DELETE /api/v1/admin/restaurants/:id */
+export async function deleteRestaurant(id: string): Promise<void> {
+  const res = await fetch(apiUrl(`/api/v1/admin/restaurants/${id}`), { method: "DELETE" });
+  if (!res.ok) throw new Error(await errorFrom(res, "Failed to delete restaurant"));
 }

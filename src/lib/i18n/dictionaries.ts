@@ -55,6 +55,7 @@ const dict = {
   filter_outdoor: { uz: "Ochiq havoda", ru: "Летняя веранда", en: "Outdoor seating", kaa: "Ашық аспан астында" },
   filter_wifi: { uz: "Wi-Fi", ru: "Wi-Fi", en: "Wi-Fi", kaa: "Wi-Fi" },
   filter_parking: { uz: "Parking", ru: "Парковка", en: "Parking", kaa: "Тураклама" },
+  filter_family_section: { uz: "Oilaviy zal", ru: "Семейный зал", en: "Family section", kaa: "Шаңарақ залы" },
 
   open_now: { uz: "Hozir ochiq", ru: "Открыто", en: "Open now", kaa: "Ҳәзир ашық" },
   closed_now: { uz: "Yopiq", ru: "Закрыто", en: "Closed", kaa: "Жабық" },
@@ -169,6 +170,19 @@ const dict = {
     kaa: "Бул орынды пүткиллей өшириуди қәлейсиз бе? Бул әмелди артқа қайтарыў мүмкин емес.",
   },
   field_hours: { uz: "Ish vaqti", ru: "Часы работы", en: "Working hours", kaa: "Жумыс ўақты" },
+  field_ramadan_hours: {
+    uz: "Ramazon oyidagi ish vaqti (ixtiyoriy)",
+    ru: "Часы работы в Рамадан (необязательно)",
+    en: "Ramadan hours (optional)",
+    kaa: "Рамазан айындағы жумыс ўақты (ықтыярлы)",
+  },
+  field_ramadan_hours_placeholder: {
+    uz: "Masalan: 20:00–02:00, iftordan keyin",
+    ru: "Например: 20:00–02:00, после ифтара",
+    en: "e.g. 20:00–02:00, after iftar",
+    kaa: "Мысалы: 20:00–02:00, ифтардан кейин",
+  },
+  ramadan_hours_label: { uz: "Ramazon oyida", ru: "В Рамадан", en: "During Ramadan", kaa: "Рамазан айында" },
   day_0: { uz: "Dushanba", ru: "Понедельник", en: "Mon", kaa: "Дүйсенби" },
   day_1: { uz: "Seshanba", ru: "Вторник", en: "Tue", kaa: "Сейсенби" },
   day_2: { uz: "Chorshanba", ru: "Среда", en: "Wed", kaa: "Сәрсенби" },

@@ -23,6 +23,7 @@ const ATTRIBUTE_BADGES: { key: keyof RestaurantDetail["attributes"]; icon: strin
   { key: "parking", icon: "🅿️", labelKey: "filter_parking" },
   { key: "outdoorSeating", icon: "🌤️", labelKey: "filter_outdoor" },
   { key: "kidsArea", icon: "🧒", labelKey: "filter_family" },
+  { key: "familySection", icon: "👨‍👩‍👧", labelKey: "filter_family_section" },
   { key: "is24h", icon: "🕐", labelKey: "filter_24h" },
 ];
 
@@ -218,6 +219,12 @@ export function RestaurantDetailView({
                 <div className="mb-3">
                   <div className="font-bold text-[var(--text)]">{t("hours")}</div>
                   <div className="text-[var(--text-sub)]">{hoursLabel}</div>
+                </div>
+              )}
+              {restaurant.ramadanHoursNote && (
+                <div className="mb-3 rounded-lg bg-saffron/10 p-2.5">
+                  <div className="font-bold text-saffron">🌙 {t("ramadan_hours_label")}</div>
+                  <div className="text-[var(--text-sub)]">{restaurant.ramadanHoursNote}</div>
                 </div>
               )}
               <div className="mb-3">

@@ -78,6 +78,7 @@ function mapAttributes(a: Partial<RestaurantAttributes> | null | undefined): Res
     wifi: a?.wifi ?? false,
     outdoorSeating: a?.outdoorSeating ?? false,
     kidsArea: a?.kidsArea ?? false,
+    familySection: a?.familySection ?? false,
     halal: a?.halal ?? false,
     vegetarian: a?.vegetarian ?? false,
     vegan: a?.vegan ?? false,
@@ -121,6 +122,7 @@ function mapDetail(r: any): RestaurantDetail {
     phone: r.phone ?? undefined,
     telegram: r.telegram ?? undefined,
     verifiedOwner: r.verifiedOwner ?? false,
+    ramadanHoursNote: r.ramadanHoursNote ?? undefined,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     categories: (r.categories ?? []).map((c: any) => ({
       id: c.id,
@@ -393,6 +395,7 @@ function mapAdminRestaurant(r: any): AdminRestaurant {
     priceBucket: r.priceBucket,
     attributes: mapAttributes(r.attributes),
     hours: mapHours(r.hours),
+    ramadanHoursNote: r.ramadanHoursNote ?? undefined,
   };
 }
 
@@ -414,8 +417,9 @@ export async function updateRestaurant(
     phone?: string;
     type: EstablishmentType;
     priceBucket: RestaurantSummary["priceBucket"];
-    attributes: Pick<RestaurantAttributes, "halal" | "delivery" | "wifi" | "parking" | "outdoorSeating" | "kidsArea" | "is24h">;
+    attributes: Pick<RestaurantAttributes, "halal" | "delivery" | "wifi" | "parking" | "outdoorSeating" | "kidsArea" | "familySection" | "is24h">;
     hours: WorkingHours[];
+    ramadanHoursNote?: string;
   },
 ): Promise<AdminRestaurant> {
   const res = await fetch(apiUrl(`/api/v1/admin/restaurants/${id}`), {

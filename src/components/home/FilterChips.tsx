@@ -13,6 +13,7 @@ export type FilterKey =
   | "topRated"
   | "mostReviewed"
   | "kidsArea"
+  | "familySection"
   | "outdoorSeating"
   | "wifi"
   | "parking";
@@ -80,6 +81,15 @@ const ICONS: Record<FilterKey, ReactNode> = {
       <path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.55 1.55M18.25 18.25l1.55 1.55M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.55-1.55M18.25 5.75l1.55-1.55" />
     </svg>
   ),
+  familySection: (
+    <svg {...ICON_PROPS}>
+      <circle cx="7" cy="6.5" r="2.2" />
+      <circle cx="17" cy="6.5" r="2.2" />
+      <circle cx="12" cy="8.5" r="1.6" />
+      <path d="M2.5 20v-1.5A3.5 3.5 0 0 1 6 15h2a3.5 3.5 0 0 1 3.5 3.5V20" />
+      <path d="M12.5 20v-1a3 3 0 0 1 3-3h1a3 3 0 0 1 3 3v1" />
+    </svg>
+  ),
   wifi: (
     <svg {...ICON_PROPS}>
       <path d="M5 12.6a11 11 0 0 1 14 0" />
@@ -104,6 +114,7 @@ const CHIPS: { key: FilterKey; labelKey: DictKey }[] = [
   { key: "topRated", labelKey: "filter_top_rated" },
   { key: "mostReviewed", labelKey: "filter_most_reviewed" },
   { key: "kidsArea", labelKey: "filter_family" },
+  { key: "familySection", labelKey: "filter_family_section" },
   { key: "outdoorSeating", labelKey: "filter_outdoor" },
   { key: "wifi", labelKey: "filter_wifi" },
   { key: "parking", labelKey: "filter_parking" },

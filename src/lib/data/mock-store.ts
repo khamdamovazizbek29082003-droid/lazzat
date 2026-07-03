@@ -555,6 +555,7 @@ const FULL_ATTRS_DEFAULT: RestaurantDetail["attributes"] = {
   wifi: false,
   outdoorSeating: false,
   kidsArea: false,
+  familySection: false,
   halal: false,
   vegetarian: false,
   vegan: false,

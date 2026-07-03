@@ -199,6 +199,9 @@ model Restaurant {
   priceBucket   PriceBucket @default(MODERATE)
   avgCheckUzs   Int? // average price per person, UZS
   coverImageUrl String?
+  // Free-text note for Ramadan-specific hours (e.g. "20:00–02:00 iftardan keyin") — actual
+  // Ramadan dates shift yearly on the lunar calendar, so this is a note, not a parallel schedule.
+  ramadanHoursNote String? @db.Text
 
   // Denormalized rating cache (recomputed by job/trigger on review change)
   ratingAvg        Float @default(0)
@@ -260,6 +263,9 @@ model RestaurantAttributes {
   wifi           Boolean @default(false)
   outdoorSeating Boolean @default(false)
   kidsArea       Boolean @default(false)
+  // Separate seating area for families — a distinct, culturally common concept in Uzbek
+  // restaurants/chaykhanas from "kidsArea" (a play area), so tracked separately.
+  familySection  Boolean @default(false)
   halal          Boolean @default(false)
   vegetarian     Boolean @default(false)
   vegan          Boolean @default(false)

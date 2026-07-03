@@ -35,13 +35,18 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-const ATTR_TOGGLES: { key: "halal" | "delivery" | "wifi" | "parking" | "outdoorSeating" | "kidsArea" | "is24h"; icon: string; labelKey: "filter_halal" | "filter_delivery" | "filter_wifi" | "filter_parking" | "filter_outdoor" | "filter_family" | "filter_24h" }[] = [
+const ATTR_TOGGLES: {
+  key: "halal" | "delivery" | "wifi" | "parking" | "outdoorSeating" | "kidsArea" | "familySection" | "is24h";
+  icon: string;
+  labelKey: "filter_halal" | "filter_delivery" | "filter_wifi" | "filter_parking" | "filter_outdoor" | "filter_family" | "filter_family_section" | "filter_24h";
+}[] = [
   { key: "halal", icon: "☪️", labelKey: "filter_halal" },
   { key: "delivery", icon: "🛵", labelKey: "filter_delivery" },
   { key: "wifi", icon: "📶", labelKey: "filter_wifi" },
   { key: "parking", icon: "🅿️", labelKey: "filter_parking" },
   { key: "outdoorSeating", icon: "🌤️", labelKey: "filter_outdoor" },
   { key: "kidsArea", icon: "🧒", labelKey: "filter_family" },
+  { key: "familySection", icon: "👨‍👩‍👧", labelKey: "filter_family_section" },
   { key: "is24h", icon: "🕐", labelKey: "filter_24h" },
 ];
 
@@ -70,6 +75,7 @@ export function RestaurantEditForm({
   const [priceBucket, setPriceBucket] = useState(restaurant.priceBucket);
   const [attrs, setAttrs] = useState(restaurant.attributes);
   const [hours, setHours] = useState(() => normalizeHours(restaurant.hours));
+  const [ramadanHoursNote, setRamadanHoursNote] = useState(restaurant.ramadanHoursNote ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -93,9 +99,11 @@ export function RestaurantEditForm({
           parking: attrs.parking,
           outdoorSeating: attrs.outdoorSeating,
           kidsArea: attrs.kidsArea,
+          familySection: attrs.familySection,
           is24h: attrs.is24h,
         },
         hours,
+        ramadanHoursNote: ramadanHoursNote.trim() || undefined,
       });
       onSaved(updated);
       setSaved(true);
@@ -207,6 +215,15 @@ export function RestaurantEditForm({
           {t("hours_copy_to_all")}
         </button>
       </div>
+
+      <Field label={t("field_ramadan_hours")}>
+        <input
+          value={ramadanHoursNote}
+          onChange={(e) => setRamadanHoursNote(e.target.value)}
+          placeholder={t("field_ramadan_hours_placeholder")}
+          className={inputCls}
+        />
+      </Field>
 
       <div className="mb-3 flex flex-wrap gap-1.5">
         {ATTR_TOGGLES.map((a) => (

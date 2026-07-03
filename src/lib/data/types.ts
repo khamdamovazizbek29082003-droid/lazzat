@@ -72,6 +72,7 @@ export interface RestaurantAttributes {
   wifi: boolean;
   outdoorSeating: boolean;
   kidsArea: boolean;
+  familySection: boolean;
   halal: boolean;
   vegetarian: boolean;
   vegan: boolean;
@@ -104,6 +105,7 @@ export interface RestaurantDetail extends RestaurantSummary {
   phone?: string;
   telegram?: string;
   verifiedOwner: boolean;
+  ramadanHoursNote?: string;
   categories: MenuCategory[];
   reviews: Review[];
 }
@@ -210,6 +212,7 @@ export interface AdminRestaurant {
   priceBucket: PriceBucket;
   attributes: RestaurantAttributes;
   hours: WorkingHours[];
+  ramadanHoursNote?: string;
 }
 
 export interface PendingReview {

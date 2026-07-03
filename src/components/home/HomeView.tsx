@@ -55,6 +55,7 @@ export function HomeView() {
     if (active.has("halal")) items = items.filter((r) => r.attributes.halal);
     if (active.has("delivery")) items = items.filter((r) => r.attributes.delivery);
     if (active.has("kidsArea")) items = items.filter((r) => r.attributes.kidsArea);
+    if (active.has("familySection")) items = items.filter((r) => r.attributes.familySection);
     if (active.has("outdoorSeating")) items = items.filter((r) => r.attributes.outdoorSeating);
     if (active.has("wifi")) items = items.filter((r) => r.attributes.wifi);
     if (active.has("parking")) items = items.filter((r) => r.attributes.parking);

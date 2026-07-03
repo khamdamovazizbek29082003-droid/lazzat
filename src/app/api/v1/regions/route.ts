@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 
-const Q = z.object({ locale: z.enum(["uz", "ru", "en"]).default("uz") });
+const Q = z.object({ locale: z.enum(["uz", "ru", "en", "kaa"]).default("uz") });
 
 /** GET /api/v1/regions?locale= — all 14 regions with their cities, for region/city pickers. */
 export async function GET(req: NextRequest) {

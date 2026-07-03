@@ -4,7 +4,7 @@
  * can later be rewired to real `fetch` calls without touching any UI.
  */
 
-export type Locale = "uz" | "ru" | "en";
+export type Locale = "uz" | "ru" | "en" | "kaa";
 
 export type EstablishmentType =
   | "RESTAURANT"

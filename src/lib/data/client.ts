@@ -45,10 +45,13 @@ function apiUrl(path: string) {
 type RawTranslation = { locale: string; [field: string]: unknown };
 
 function pickTranslated(translations: RawTranslation[] | undefined, field: string): TranslatedText {
-  const out: TranslatedText = { uz: "", ru: "", en: "" };
+  const out: TranslatedText = { uz: "", ru: "", en: "", kaa: "" };
   for (const t of translations ?? []) {
-    if (t.locale === "uz" || t.locale === "ru" || t.locale === "en") out[t.locale] = (t[field] as string) ?? "";
+    if (t.locale === "uz" || t.locale === "ru" || t.locale === "en" || t.locale === "kaa") out[t.locale] = (t[field] as string) ?? "";
   }
+  // Most listing names are proper nouns kept identical across locales anyway (see the OSM
+  // import) — fall back to the Uzbek name rather than showing blank when no "kaa" row exists.
+  if (!out.kaa) out.kaa = out.uz;
   return out;
 }
 

@@ -15,7 +15,7 @@ const Q = z.object({
   east: z.coerce.number().min(-180).max(180),
   north: z.coerce.number().min(-90).max(90),
   zoom: z.coerce.number().min(0).max(22).default(5),
-  locale: z.enum(["uz", "ru", "en"]).default("uz"),
+  locale: z.enum(["uz", "ru", "en", "kaa"]).default("uz"),
 });
 
 const CLUSTER_ZOOM_THRESHOLD = 8;

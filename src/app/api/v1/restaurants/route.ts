@@ -9,7 +9,7 @@ const Q = z.object({
   openNow: z.coerce.boolean().optional(),
   halal: z.coerce.boolean().optional(),
   priceBucket: z.enum(["BUDGET", "MODERATE", "UPSCALE", "PREMIUM"]).optional(),
-  locale: z.enum(["uz", "ru", "en"]).default("uz"),
+  locale: z.enum(["uz", "ru", "en", "kaa"]).default("uz"),
   cursor: z.string().optional(),
   limit: z.coerce.number().min(1).max(50).default(20),
 });

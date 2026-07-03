@@ -26,6 +26,7 @@ enum Locale {
   uz
   ru
   en
+  kaa
 }
 
 enum Role {

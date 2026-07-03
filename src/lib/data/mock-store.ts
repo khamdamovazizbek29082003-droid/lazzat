@@ -11,7 +11,7 @@ import type {
 import { CATEGORY_EMOJI } from "./types";
 import { REAL_PLACE_SEEDS } from "./real-places";
 
-const tr = (uz: string, ru: string, en: string): TranslatedText => ({ uz, ru, en });
+const tr = (uz: string, ru: string, en: string): TranslatedText => ({ uz, ru, en, kaa: uz });
 
 const GRADIENTS: [string, string][] = [
   ["#14418C", "#2563C4"],

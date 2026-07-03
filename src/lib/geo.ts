@@ -15,7 +15,7 @@ export type MapMarker = {
 /** Markers inside a viewport bounding box — feeds the 3D map at street-level zoom. */
 export async function markersInBBox(
   b: { west: number; south: number; east: number; north: number },
-  locale: "uz" | "ru" | "en" = "uz",
+  locale: "uz" | "ru" | "en" | "kaa" = "uz",
   limit = 2000,
 ) {
   return db.$queryRaw<MapMarker[]>(Prisma.sql`
@@ -37,7 +37,7 @@ export type MapClusterRow = { id: string; lat: number; lng: number; count: numbe
  * shows every region even with zero restaurants yet, so the whole country is explorable
  * on the map from day one (label + count of live restaurants, which may be 0).
  */
-export async function allRegionsAsClusters(locale: "uz" | "ru" | "en" = "uz") {
+export async function allRegionsAsClusters(locale: "uz" | "ru" | "en" | "kaa" = "uz") {
   return db.$queryRaw<MapClusterRow[]>(Prisma.sql`
     SELECT r.id AS id, AVG(c.lat)::float AS lat, AVG(c.lng)::float AS lng,
            COUNT(res.id) FILTER (WHERE res.status = 'APPROVED')::int AS count, rt.name AS label

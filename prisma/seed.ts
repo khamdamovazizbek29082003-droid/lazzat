@@ -24,10 +24,18 @@ const REGIONS: [string, string, string, string][] = [
 
 const CITIES: [string, string, number, number, string, string, string][] = [
   ["TAS", "tashkent", 41.3111, 69.2797, "Toshkent", "Ташкент", "Tashkent"],
+  ["TOS", "nurafshon", 41.0167, 69.3417, "Nurafshon", "Нурафшан", "Nurafshon"],
   ["SAM", "samarkand", 39.6542, 66.9597, "Samarqand", "Самарканд", "Samarkand"],
   ["BUX", "bukhara", 39.7747, 64.4286, "Buxoro", "Бухара", "Bukhara"],
   ["FAR", "fergana", 40.3894, 71.7876, "Farg'ona", "Фергана", "Fergana"],
+  ["AND", "andijan", 40.7821, 72.3442, "Andijon", "Андижан", "Andijan"],
+  ["NAM", "namangan", 40.9983, 71.6726, "Namangan", "Наманган", "Namangan"],
   ["XOR", "khiva", 41.3783, 60.3639, "Xiva", "Хива", "Khiva"],
+  ["QAS", "qarshi", 38.8606, 65.7891, "Qarshi", "Карши", "Qarshi"],
+  ["SUR", "termez", 37.2242, 67.2783, "Termiz", "Термез", "Termez"],
+  ["JIZ", "jizzakh", 40.1158, 67.8422, "Jizzax", "Джизак", "Jizzakh"],
+  ["SIR", "guliston", 40.4897, 68.7842, "Guliston", "Гулистан", "Guliston"],
+  ["NAV", "navoiy", 40.0844, 65.3792, "Navoiy", "Навои", "Navoi"],
   ["QOR", "nukus", 42.46, 59.6166, "Nukus", "Нукус", "Nukus"],
 ];
 
@@ -111,7 +119,7 @@ async function main() {
       create: { slug, translations: { create: tr(uz, ru, en) } },
     });
   }
-  console.log("Seeded taxonomy: 14 regions, 6 cities, 12 Tashkent districts, cuisines, allergens.");
+  console.log(`Seeded taxonomy: ${REGIONS.length} regions, ${CITIES.length} cities, 12 Tashkent districts, cuisines, allergens.`);
 }
 
 main().finally(() => db.$disconnect());

@@ -23,6 +23,16 @@ const Body = z.object({
     kidsArea: z.boolean(),
     is24h: z.boolean(),
   }),
+  hours: z
+    .array(
+      z.object({
+        dayOfWeek: z.number().int().min(0).max(6),
+        opensAt: z.string().nullable(),
+        closesAt: z.string().nullable(),
+        isClosed: z.boolean(),
+      }),
+    )
+    .length(7),
 });
 
 /** PATCH /api/v1/admin/restaurants/:id — edit a restaurant's core listing info. */
@@ -36,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  const { names, address, phone, type, priceBucket, attributes } = parsed.data;
+  const { names, address, phone, type, priceBucket, attributes, hours } = parsed.data;
 
   const restaurant = await db.$transaction(async (tx) => {
     await Promise.all(
@@ -53,9 +63,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       update: attributes,
       create: { restaurantId: id, ...attributes },
     });
+    await tx.workingHours.deleteMany({ where: { restaurantId: id } });
+    await tx.workingHours.createMany({ data: hours.map((h) => ({ ...h, restaurantId: id })) });
     return tx.restaurant.update({
       where: { id },
       data: { address, phone: phone || null, type, priceBucket, searchText: buildSearchText(Object.values(names)) },
+      include: {
+        translations: true,
+        city: { include: { translations: { where: { locale: "uz" } } } },
+        attributes: true,
+        hours: { orderBy: { dayOfWeek: "asc" } },
+      },
     });
   });
 

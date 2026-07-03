@@ -4,9 +4,19 @@ import { useState, type ReactNode } from "react";
 import { useSession } from "next-auth/react";
 import { useT } from "@/components/providers/LocaleProvider";
 import { deleteRestaurant, updateRestaurant } from "@/lib/data/client";
-import type { AdminRestaurant, EstablishmentType, PriceBucket } from "@/lib/data/types";
+import type { AdminRestaurant, EstablishmentType, PriceBucket, WorkingHours } from "@/lib/data/types";
 import { CATEGORY_EMOJI } from "@/lib/data/types";
+import type { DictKey } from "@/lib/i18n/dictionaries";
 import { Panel } from "./Panel";
+
+const DAY_KEYS: DictKey[] = ["day_0", "day_1", "day_2", "day_3", "day_4", "day_5", "day_6"];
+
+function normalizeHours(hours: WorkingHours[]): WorkingHours[] {
+  return Array.from({ length: 7 }, (_, dayOfWeek) => {
+    const existing = hours.find((h) => h.dayOfWeek === dayOfWeek);
+    return existing ?? { dayOfWeek, opensAt: "09:00", closesAt: "22:00", isClosed: false };
+  });
+}
 
 const TYPES: EstablishmentType[] = [
   "CAFE", "RESTAURANT", "FAST_FOOD", "COFFEE_SHOP", "TEA_HOUSE",
@@ -58,6 +68,7 @@ export function EditRestaurantPanel({
   const [type, setType] = useState(restaurant.type);
   const [priceBucket, setPriceBucket] = useState(restaurant.priceBucket);
   const [attrs, setAttrs] = useState(restaurant.attributes);
+  const [hours, setHours] = useState(() => normalizeHours(restaurant.hours));
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -81,6 +92,7 @@ export function EditRestaurantPanel({
           kidsArea: attrs.kidsArea,
           is24h: attrs.is24h,
         },
+        hours,
       });
       onSaved(updated);
     } catch {
@@ -138,6 +150,59 @@ export function EditRestaurantPanel({
           ))}
         </select>
       </Field>
+
+      <div className="mb-1 text-xs font-bold text-[var(--text-sub)]">{t("field_hours")}</div>
+      <div className="mb-3 space-y-1.5">
+        {hours.map((h, i) => (
+          <div key={h.dayOfWeek} className="flex items-center gap-1.5 text-xs">
+            <span className="w-9 shrink-0 font-semibold text-[var(--text)]">{t(DAY_KEYS[h.dayOfWeek])}</span>
+            <input
+              type="time"
+              value={h.opensAt ?? ""}
+              disabled={h.isClosed || h.opensAt === null}
+              onChange={(e) => setHours((prev) => prev.map((d, j) => (j === i ? { ...d, opensAt: e.target.value } : d)))}
+              className="w-[92px] rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-1 text-[var(--text)] disabled:opacity-40"
+            />
+            <span className="text-[var(--text-sub)]">–</span>
+            <input
+              type="time"
+              value={h.closesAt ?? ""}
+              disabled={h.isClosed || h.closesAt === null}
+              onChange={(e) => setHours((prev) => prev.map((d, j) => (j === i ? { ...d, closesAt: e.target.value } : d)))}
+              className="w-[92px] rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-1 text-[var(--text)] disabled:opacity-40"
+            />
+            <label className="flex items-center gap-1 text-[var(--text-sub)]">
+              <input
+                type="checkbox"
+                checked={h.opensAt === null}
+                onChange={(e) =>
+                  setHours((prev) =>
+                    prev.map((d, j) =>
+                      j === i ? { ...d, opensAt: e.target.checked ? null : "09:00", closesAt: e.target.checked ? null : "22:00", isClosed: false } : d,
+                    ),
+                  )
+                }
+              />
+              {t("hours_24h")}
+            </label>
+            <label className="flex items-center gap-1 text-[var(--text-sub)]">
+              <input
+                type="checkbox"
+                checked={h.isClosed}
+                onChange={(e) => setHours((prev) => prev.map((d, j) => (j === i ? { ...d, isClosed: e.target.checked } : d)))}
+              />
+              {t("hours_closed")}
+            </label>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => setHours((prev) => prev.map((d) => ({ ...d, opensAt: prev[0].opensAt, closesAt: prev[0].closesAt, isClosed: prev[0].isClosed })))}
+          className="text-xs font-semibold text-cobalt underline"
+        >
+          {t("hours_copy_to_all")}
+        </button>
+      </div>
 
       <div className="mb-3 flex flex-wrap gap-1.5">
         {ATTR_TOGGLES.map((a) => (

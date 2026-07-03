@@ -375,6 +375,7 @@ function mapAdminRestaurant(r: any): AdminRestaurant {
     phone: r.phone ?? undefined,
     priceBucket: r.priceBucket,
     attributes: mapAttributes(r.attributes),
+    hours: mapHours(r.hours),
   };
 }
 
@@ -397,6 +398,7 @@ export async function updateRestaurant(
     type: EstablishmentType;
     priceBucket: RestaurantSummary["priceBucket"];
     attributes: Pick<RestaurantAttributes, "halal" | "delivery" | "wifi" | "parking" | "outdoorSeating" | "kidsArea" | "is24h">;
+    hours: WorkingHours[];
   },
 ): Promise<AdminRestaurant> {
   const res = await fetch(apiUrl(`/api/v1/admin/restaurants/${id}`), {

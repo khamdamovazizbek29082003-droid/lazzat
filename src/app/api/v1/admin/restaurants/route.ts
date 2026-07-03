@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
       translations: true,
       city: { include: { translations: { where: { locale: "uz" } } } },
       attributes: true,
+      hours: { orderBy: { dayOfWeek: "asc" } },
     },
   });
   return NextResponse.json({ items });

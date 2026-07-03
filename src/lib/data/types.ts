@@ -185,6 +185,7 @@ export interface AdminRestaurant {
   phone?: string;
   priceBucket: PriceBucket;
   attributes: RestaurantAttributes;
+  hours: WorkingHours[];
 }
 
 export interface PendingReview {

@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
 import { useT } from "@/components/providers/LocaleProvider";
 import { displayFont } from "@/lib/fonts";
-import { DISH_PHOTOS } from "@/lib/data/photos";
 import { Ikat } from "@/components/layout/Ikat";
+import { DishMedallion } from "./DishMedallion";
 
 const IKAT_PATTERN =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cpath d='M22 3 L41 22 L22 41 L3 22 Z' fill='none' stroke='white' stroke-width='1.6'/%3E%3C/svg%3E\")";
@@ -23,8 +21,6 @@ export function Hero({
 }) {
   const t = useT();
   const [headlineLead, headlineAccent] = t("hero_title").split(" — ");
-  const medallion = DISH_PHOTOS.plov;
-  const [photoFailed, setPhotoFailed] = useState(false);
 
   return (
     <div className="relative overflow-hidden rounded-3xl shadow-lg">
@@ -92,28 +88,8 @@ export function Hero({
           </div>
         </div>
 
-        {/* Stamped photo medallion — a single iconic dish in a dashed "seal" ring, rotated for
-            a hand-stamped feel, instead of the old full-bleed photo-mosaic wallpaper. */}
-        <div className="animate-rise-in relative mx-auto hidden aspect-square w-full max-w-[280px] sm:block" style={{ animationDelay: "140ms" }}>
-          <div className="absolute inset-0 rotate-3 rounded-full border-[3px] border-dashed border-white/50" />
-          <div className="absolute inset-3 -rotate-2 overflow-hidden rounded-full shadow-2xl ring-4 ring-white/80">
-            {!photoFailed ? (
-              <Image
-                src={medallion.url}
-                alt={medallion.name.en}
-                fill
-                unoptimized
-                className="object-cover"
-                onError={() => setPhotoFailed(true)}
-              />
-            ) : (
-              <div className="grid h-full w-full place-items-center bg-cobalt-deep text-5xl">🍚</div>
-            )}
-          </div>
-          <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rotate-2 rounded-full bg-cobalt-deep px-3 py-1 text-[11px] font-bold whitespace-nowrap text-white shadow-lg">
-            {medallion.name.uz}
-          </span>
-        </div>
+        {/* Stamped photo medallion — page-flips between national dishes every ~2.8s. */}
+        <DishMedallion />
       </div>
 
       <span className="absolute right-3 bottom-2 text-[10px] font-medium text-white/70">{t("photo_credits_hint")}</span>

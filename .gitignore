@@ -27,3 +27,6 @@ yarn-error.log*
 .vscode/*
 !.vscode/extensions.json
 .claude/settings.local.json
+
+.vercel
+.env*

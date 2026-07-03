@@ -138,6 +138,12 @@ const dict = {
   review_placeholder: { uz: "Taassurotingiz…", ru: "Ваши впечатления…", en: "Your impressions…" },
   submit_review: { uz: "Yuborish", ru: "Отправить", en: "Submit" },
   error_stars_required: { uz: "Avval yulduzcha tanlang.", ru: "Сначала выберите оценку.", en: "Pick a star rating first." },
+  error_sign_in_required: {
+    uz: "Sharh qoldirish uchun tizimga kiring.",
+    ru: "Войдите, чтобы оставить отзыв.",
+    en: "Sign in to leave a review.",
+  },
+  error_generic: { uz: "Xatolik yuz berdi. Qayta urinib ko'ring.", ru: "Произошла ошибка. Попробуйте снова.", en: "Something went wrong. Try again." },
   review_sent_toast: {
     uz: "✓ Sharh yuborildi — moderatsiyadan so'ng ko'rinadi.",
     ru: "✓ Отзыв отправлен — появится после модерации.",

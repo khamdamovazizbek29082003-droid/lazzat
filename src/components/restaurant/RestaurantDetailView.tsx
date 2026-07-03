@@ -194,7 +194,7 @@ export function RestaurantDetailView({
               </h2>
               <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
                 <ReviewForm
-                  restaurantSlug={restaurant.slug}
+                  restaurantId={restaurant.id}
                   onSubmitted={(review) =>
                     setRestaurant((r) => ({
                       ...r,

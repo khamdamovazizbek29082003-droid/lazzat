@@ -11,6 +11,11 @@ export function requireRole(user: SessionUser | null, min: Role): asserts user i
   }
 }
 
+/** If-narrowable variant of requireRole for route handlers (avoids TS narrowing pitfalls with try/catch). */
+export function hasRole(user: SessionUser | null, min: Role): user is SessionUser {
+  return !!user && ROLE_RANK[user.role] >= ROLE_RANK[min];
+}
+
 /** Owner scope is per-restaurant via an APPROVED claim; moderators+ bypass. */
 export async function requireRestaurantOwner(user: SessionUser | null, restaurantId: string) {
   if (!user) throw Object.assign(new Error("Unauthorized"), { status: 401 });

@@ -58,6 +58,8 @@ export function AddPlaceForm({
     setError(null);
     try {
       await onSubmit({ name: name.trim(), type, ownerPhone: phone.replace(/[\s-]/g, ""), note: note.trim() || undefined });
+    } catch (err) {
+      setError(err instanceof Error && err.message === "error_sign_in_required" ? t("error_sign_in_required") : t("error_generic"));
     } finally {
       setSubmitting(false);
     }

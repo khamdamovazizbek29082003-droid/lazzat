@@ -1,11 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSession } from "next-auth/react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useT } from "@/components/providers/LocaleProvider";
 import { createSubmission, getMapData, getRestaurant, listSubmissionQueue } from "@/lib/data/client";
-import type { EstablishmentType, MapCluster, MapMarker } from "@/lib/data/types";
+import { CATEGORY_EMOJI, type EstablishmentType, type MapCluster, type MapMarker } from "@/lib/data/types";
 import { AddPlaceForm } from "./AddPlaceForm";
 import { AdminQueueDrawer } from "./AdminQueueDrawer";
 import { MapTopBar } from "./MapTopBar";
@@ -124,6 +125,11 @@ function buildPinEl(marker: MapMarker) {
 
 export function MapExplorer({ initialSlug }: { initialSlug?: string }) {
   const t = useT();
+  const { data: session } = useSession();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const role = (session?.user as any)?.role as string | undefined;
+  const canModerate = role === "MODERATOR" || role === "ADMIN";
+
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
@@ -137,6 +143,9 @@ export function MapExplorer({ initialSlug }: { initialSlug?: string }) {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [adminOpen, setAdminOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
+  // My own just-submitted pins, shown pulsing immediately — pending submissions aren't
+  // public data, so this is local-only feedback rather than something fetched from the map API.
+  const [myPending, setMyPending] = useState<MapMarker[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [dataVersion, setDataVersion] = useState(0);
 
@@ -236,8 +245,9 @@ export function MapExplorer({ initialSlug }: { initialSlug?: string }) {
   }, [draft]);
 
   const refreshPendingCount = useCallback(() => {
+    if (!canModerate) return;
     listSubmissionQueue().then((items) => setPendingCount(items.length));
-  }, []);
+  }, [canModerate]);
 
   // Fetch clusters/markers for the current viewport whenever it changes.
   useEffect(() => {
@@ -264,7 +274,7 @@ export function MapExplorer({ initialSlug }: { initialSlug?: string }) {
           markersRef.current.push(new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([cluster.lng, cluster.lat]).addTo(map));
         });
       } else {
-        data.items.forEach((marker) => {
+        [...data.items, ...myPending].forEach((marker) => {
           const el = buildPinEl(marker);
           el.addEventListener("click", () => {
             if (marker.status === "APPROVED") setSelectedSlug(marker.slug);
@@ -276,7 +286,7 @@ export function MapExplorer({ initialSlug }: { initialSlug?: string }) {
     });
 
     refreshPendingCount();
-  }, [dataVersion, refreshPendingCount, say, t]);
+  }, [dataVersion, refreshPendingCount, say, t, myPending]);
 
   const handlePitch = (value: number) => {
     setPitch(value);
@@ -298,10 +308,24 @@ export function MapExplorer({ initialSlug }: { initialSlug?: string }) {
 
   const submitDraft = async (input: { name: string; type: EstablishmentType; ownerPhone: string; note?: string }) => {
     if (!draft) return;
-    await createSubmission({ ...input, lat: draft.lat, lng: draft.lng });
+    const submission = await createSubmission({ ...input, lat: draft.lat, lng: draft.lng });
+    setMyPending((prev) => [
+      ...prev,
+      {
+        id: submission.id,
+        slug: submission.id,
+        lat: draft.lat,
+        lng: draft.lng,
+        rating: 0,
+        priceBucket: "MODERATE",
+        type: input.type,
+        status: "PENDING",
+        name: input.name,
+        emoji: CATEGORY_EMOJI[input.type],
+      },
+    ]);
     setDraft(null);
     setAddMode(false);
-    setDataVersion((v) => v + 1);
     say(t("submission_sent_toast"));
   };
 
@@ -332,6 +356,7 @@ export function MapExplorer({ initialSlug }: { initialSlug?: string }) {
         onToggleAdmin={() => setAdminOpen((v) => !v)}
         pendingCount={pendingCount}
         onBackToCountry={backToCountry}
+        canModerate={canModerate}
       />
 
       <div className="absolute right-4 bottom-5 z-40 flex flex-col items-end gap-2">
@@ -368,7 +393,7 @@ export function MapExplorer({ initialSlug }: { initialSlug?: string }) {
 
       {selectedSlug && !addMode && <RestaurantPopupPanel slug={selectedSlug} onClose={() => setSelectedSlug(null)} />}
       {draft && <AddPlaceForm lat={draft.lat} lng={draft.lng} onCancel={() => setDraft(null)} onSubmit={submitDraft} />}
-      {adminOpen && (
+      {adminOpen && canModerate && (
         <AdminQueueDrawer
           onClose={() => setAdminOpen(false)}
           onDecided={() => {

@@ -48,11 +48,15 @@ export function RestaurantPopupPanel({ slug, onClose }: { slug: string; onClose:
 
   const submitReview = async () => {
     if (!stars) return setError(t("error_stars_required"));
-    const review = await createReview(restaurant.slug, { ratingOverall: stars, text: text.trim() || undefined });
-    setRestaurant((r) => (r ? { ...r, reviews: [review, ...r.reviews], reviewCount: r.reviewCount + 1 } : r));
-    setStars(0);
-    setText("");
-    setError(null);
+    try {
+      const review = await createReview(restaurant.id, { ratingOverall: stars, text: text.trim() || undefined });
+      setRestaurant((r) => (r ? { ...r, reviews: [review, ...r.reviews], reviewCount: r.reviewCount + 1 } : r));
+      setStars(0);
+      setText("");
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error && err.message === "error_sign_in_required" ? t("error_sign_in_required") : t("error_generic"));
+    }
   };
 
   return (

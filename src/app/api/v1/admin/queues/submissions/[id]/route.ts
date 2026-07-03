@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { requireRole, type SessionUser } from "@/lib/policies";
+import { hasRole, type SessionUser } from "@/lib/policies";
 import { syncLocation } from "@/lib/geo";
 import { buildSearchText } from "@/lib/search/translit";
 
@@ -24,7 +24,9 @@ const Body = z.object({
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   const user = session?.user as SessionUser | null;
-  requireRole(user, "MODERATOR");
+  if (!hasRole(user, "MODERATOR")) {
+    return NextResponse.json({ error: user ? "Forbidden" : "Unauthorized" }, { status: user ? 403 : 401 });
+  }
   const { id } = await params;
 
   const parsed = Body.safeParse(await req.json());

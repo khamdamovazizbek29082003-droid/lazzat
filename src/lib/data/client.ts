@@ -1,18 +1,10 @@
 /**
- * Data client. getMapData / getRestaurant / listNearby now hit the real database via the
- * live API routes. createSubmission / listSubmissionQueue / decideSubmission / createReview
- * are still backed by the in-memory mock store — those routes require a signed-in session,
- * and auth isn't wired into the UI yet (next phase). Once it is, the same swap applies to
- * them: replace the function body with a fetch() call, keep the signature identical.
+ * Data client. Every function here hits the real database via the live API routes.
+ * Write paths (submissions, reviews, admin decisions) require a signed-in session —
+ * NextAuth cookies ride along automatically on same-origin fetch calls from client
+ * components, so no extra wiring is needed beyond `credentials: "same-origin"` (the
+ * fetch default).
  */
-import {
-  nextRestaurantId,
-  nextReviewId,
-  nextSubmissionId,
-  restaurants as mockRestaurants,
-  slugify,
-  submissions,
-} from "./mock-store";
 import { isOpenNow, isValidOwnerPhone } from "./utils";
 import { CATEGORY_EMOJI } from "./types";
 import type {
@@ -32,13 +24,7 @@ import type {
   WorkingHours,
 } from "./types";
 
-const NETWORK_DELAY_MS = 120;
-const delay = <T>(value: T) => new Promise<T>((resolve) => setTimeout(() => resolve(value), NETWORK_DELAY_MS));
-
-const CURRENT_USER = "Siz"; // "You" — stand-in until real auth is wired.
-
 type BBox = { west: number; south: number; east: number; north: number };
-const inBBox = (lat: number, lng: number, b: BBox) => lat >= b.south && lat <= b.north && lng >= b.west && lng <= b.east;
 
 /** Relative fetch works in the browser; server components (SSR) need an absolute URL. */
 function apiUrl(path: string) {
@@ -194,24 +180,10 @@ export async function getMapData(params: BBox & { zoom: number; locale?: Locale 
     }),
   );
 
-  // Community submissions still live in the mock store (no auth yet) — overlay any pending
-  // ones here so "add a place" still shows a live pulsing pin on the map immediately.
-  const pending: MapMarker[] = submissions
-    .filter((s) => (s.status === "PENDING" || s.status === "IN_REVIEW") && inBBox(s.lat, s.lng, params))
-    .map((s) => ({
-      id: s.id,
-      slug: s.id,
-      lat: s.lat,
-      lng: s.lng,
-      rating: 0,
-      priceBucket: "MODERATE",
-      type: s.type,
-      status: "PENDING",
-      name: s.name,
-      emoji: CATEGORY_EMOJI[s.type],
-    }));
-
-  return { type: "markers", items: [...items, ...pending] };
+  // Pending (unverified) submissions aren't public — only the submitter and moderators can
+  // see them (GET /api/v1/submissions, /api/v1/admin/queues/submissions). The caller overlays
+  // its own just-submitted pin locally instead of relying on this feed for that.
+  return { type: "markers", items };
 }
 
 /** mirrors GET /api/v1/restaurants/:slug */
@@ -251,31 +223,53 @@ export async function listNearby(filters: NearbyFilters = {}): Promise<Restauran
   return mapped;
 }
 
-// ─────────────────────────── still-mocked writes (need auth first) ───────────────────────────
+// ─────────────────────────── live writes (require a signed-in session) ───────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapSubmission(s: any): PlaceSubmission {
+  return {
+    id: s.id,
+    name: s.name,
+    type: s.type,
+    ownerPhone: s.ownerPhone,
+    lat: s.lat,
+    lng: s.lng,
+    note: s.note ?? undefined,
+    status: s.status,
+    submittedBy: s.user?.name ?? "—",
+    createdAt: typeof s.createdAt === "string" ? s.createdAt : new Date(s.createdAt).toISOString(),
+    rejectionReason: s.rejectionReason ?? undefined,
+  };
+}
+
+async function errorFrom(res: Response, fallback: string): Promise<string> {
+  if (res.status === 401) return "error_sign_in_required";
+  const body = await res.json().catch(() => null);
+  return body?.error ?? fallback;
+}
 
 /** mirrors POST /api/v1/submissions */
 export async function createSubmission(input: PlaceSubmissionInput): Promise<PlaceSubmission> {
   if (!input.name.trim()) throw new Error("error_name_required");
   if (!isValidOwnerPhone(input.ownerPhone)) throw new Error("error_phone_invalid");
 
-  const submission: PlaceSubmission = {
-    ...input,
-    ownerPhone: input.ownerPhone.replace(/[\s-]/g, ""),
-    id: nextSubmissionId(),
-    status: "PENDING",
-    submittedBy: CURRENT_USER,
-    createdAt: new Date().toISOString(),
-  };
-  submissions.push(submission);
-  return delay(submission);
+  const res = await fetch(apiUrl("/api/v1/submissions"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...input, ownerPhone: input.ownerPhone.replace(/[\s-]/g, "") }),
+  });
+  if (!res.ok) throw new Error(await errorFrom(res, "Failed to submit"));
+  const { submission } = await res.json();
+  return mapSubmission(submission);
 }
 
-/** mirrors GET /api/v1/admin/queues/submissions */
+/** mirrors GET /api/v1/admin/queues/submissions — returns [] if not a signed-in moderator. */
 export async function listSubmissionQueue(): Promise<PlaceSubmission[]> {
-  const items = submissions
-    .filter((s) => s.status === "PENDING" || s.status === "IN_REVIEW")
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  return delay(items);
+  const res = await fetch(apiUrl("/api/v1/admin/queues/submissions"), { cache: "no-store" });
+  if (!res.ok) return [];
+  const { items } = await res.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return items.map((s: any) => mapSubmission(s));
 }
 
 /** mirrors POST /api/v1/admin/queues/submissions/:id */
@@ -283,76 +277,53 @@ export async function decideSubmission(
   id: string,
   action: "approve" | "reject" | "duplicate",
   reason?: string,
-): Promise<{ submission: PlaceSubmission; restaurant?: RestaurantDetail }> {
-  const submission = submissions.find((s) => s.id === id);
-  if (!submission) throw new Error("Submission not found");
+): Promise<PlaceSubmission> {
+  const res = await fetch(apiUrl(`/api/v1/admin/queues/submissions/${id}`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, reason }),
+  });
+  if (!res.ok) throw new Error(await errorFrom(res, "Failed to update submission"));
+  const data = await res.json();
 
-  if (action !== "approve") {
-    submission.status = action === "reject" ? "REJECTED" : "DUPLICATE";
-    submission.rejectionReason = reason;
-    return delay({ submission });
+  // Approve returns { restaurant }, not the updated submission row — build a minimal
+  // stand-in from what we already know; callers refetch the queue afterwards anyway.
+  if (data.restaurant) {
+    return mapSubmission({
+      id,
+      status: "APPROVED",
+      name: data.restaurant.slug,
+      type: data.restaurant.type,
+      ownerPhone: "",
+      lat: data.restaurant.lat,
+      lng: data.restaurant.lng,
+      createdAt: new Date().toISOString(),
+    });
   }
-
-  const slug = slugify(submission.name, submission.id.slice(-6));
-  const restaurant: RestaurantDetail = {
-    id: nextRestaurantId(),
-    slug,
-    type: submission.type,
-    name: { uz: submission.name, ru: submission.name, en: submission.name },
-    cityName: "Toshkent",
-    lat: submission.lat,
-    lng: submission.lng,
-    priceBucket: "MODERATE",
-    avgCheckUzs: 0,
-    ratingAvg: 0,
-    reviewCount: 0,
-    gradient: ["#14418C", "#2563C4"],
-    emoji: CATEGORY_EMOJI[submission.type],
-    attributes: mapAttributes(null),
-    hours: Array.from({ length: 7 }, (_, dayOfWeek) => ({ dayOfWeek, opensAt: "09:00", closesAt: "22:00", isClosed: false })),
-    description: { uz: submission.note ?? "", ru: submission.note ?? "", en: submission.note ?? "" },
-    address: submission.note ?? "",
-    phone: submission.ownerPhone,
-    categories: [],
-    reviews: [],
-  };
-  // Note: this pushes into the mock store, not the real database — approving here won't
-  // make the place show up via the real listNearby()/getMapData() calls above until the
-  // admin queue is wired to the real API too (next phase, needs auth).
-  mockRestaurants.push(restaurant);
-  submission.status = "APPROVED";
-  submission.createdRestaurantSlug = slug;
-
-  return delay({ submission, restaurant });
+  return mapSubmission(data.submission);
 }
 
 /** mirrors POST /api/v1/reviews */
-export async function createReview(restaurantSlug: string, input: CreateReviewInput): Promise<Review> {
-  // The restaurant now almost certainly came from the real API, not the mock store, so
-  // there's usually nothing to mutate here — just echo back a review object the caller
-  // can append to its own local state. Once auth lands this becomes a real POST.
-  const restaurant = mockRestaurants.find((r) => r.slug === restaurantSlug);
+export async function createReview(restaurantId: string, input: CreateReviewInput): Promise<Review> {
+  const res = await fetch(apiUrl("/api/v1/reviews"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ restaurantId, ...input }),
+  });
+  if (!res.ok) throw new Error(await errorFrom(res, "Failed to submit review"));
+  const { review } = await res.json();
 
-  const review: Review = {
-    id: nextReviewId(),
-    restaurantId: restaurant?.id ?? restaurantSlug,
-    userName: CURRENT_USER,
-    ratingOverall: input.ratingOverall,
-    ratingFood: input.ratingFood,
-    ratingService: input.ratingService,
-    ratingAtmosphere: input.ratingAtmosphere,
-    ratingPrice: input.ratingPrice,
-    text: input.text,
-    createdAt: new Date().toISOString(),
+  return {
+    id: review.id,
+    restaurantId: review.restaurantId,
+    userName: "Siz",
+    ratingOverall: review.ratingOverall,
+    ratingFood: review.ratingFood ?? undefined,
+    ratingService: review.ratingService ?? undefined,
+    ratingAtmosphere: review.ratingAtmosphere ?? undefined,
+    ratingPrice: review.ratingPrice ?? undefined,
+    text: review.text ?? undefined,
+    createdAt: typeof review.createdAt === "string" ? review.createdAt : new Date(review.createdAt).toISOString(),
     mine: true,
   };
-
-  if (restaurant) {
-    restaurant.reviews = [review, ...restaurant.reviews];
-    restaurant.reviewCount = restaurant.reviews.length;
-    restaurant.ratingAvg =
-      Math.round((restaurant.reviews.reduce((sum, r) => sum + r.ratingOverall, 0) / restaurant.reviews.length) * 10) / 10;
-  }
-
-  return delay(review);
 }

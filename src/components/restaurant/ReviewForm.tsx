@@ -7,10 +7,10 @@ import type { Review } from "@/lib/data/types";
 import { StarRating } from "./StarRating";
 
 export function ReviewForm({
-  restaurantSlug,
+  restaurantId,
   onSubmitted,
 }: {
-  restaurantSlug: string;
+  restaurantId: string;
   onSubmitted: (review: Review) => void;
 }) {
   const t = useT();
@@ -27,10 +27,12 @@ export function ReviewForm({
     setSubmitting(true);
     setError(null);
     try {
-      const review = await createReview(restaurantSlug, { ratingOverall: stars, text: text.trim() || undefined });
+      const review = await createReview(restaurantId, { ratingOverall: stars, text: text.trim() || undefined });
       onSubmitted(review);
       setStars(0);
       setText("");
+    } catch (err) {
+      setError(err instanceof Error && err.message === "error_sign_in_required" ? t("error_sign_in_required") : t("error_generic"));
     } finally {
       setSubmitting(false);
     }

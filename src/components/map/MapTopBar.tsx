@@ -12,6 +12,7 @@ export function MapTopBar({
   onToggleAdmin,
   pendingCount,
   onBackToCountry,
+  canModerate,
 }: {
   view: "country" | "city";
   addMode: boolean;
@@ -20,6 +21,7 @@ export function MapTopBar({
   onToggleAdmin: () => void;
   pendingCount: number;
   onBackToCountry: () => void;
+  canModerate: boolean;
 }) {
   const t = useT();
 
@@ -46,15 +48,17 @@ export function MapTopBar({
         >
           {addMode ? t("cancel_add_place") : t("add_place")}
         </button>
-        <button
-          onClick={onToggleAdmin}
-          className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
-            adminOpen ? "bg-cobalt text-white" : "bg-white/15 text-white backdrop-blur hover:bg-white/25"
-          }`}
-        >
-          🛡 {t("admin_button")}
-          {pendingCount ? ` (${pendingCount})` : ""}
-        </button>
+        {canModerate && (
+          <button
+            onClick={onToggleAdmin}
+            className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
+              adminOpen ? "bg-cobalt text-white" : "bg-white/15 text-white backdrop-blur hover:bg-white/25"
+            }`}
+          >
+            🛡 {t("admin_button")}
+            {pendingCount ? ` (${pendingCount})` : ""}
+          </button>
+        )}
       </div>
     </div>
   );

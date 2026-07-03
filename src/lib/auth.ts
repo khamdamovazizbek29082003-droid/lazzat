@@ -42,8 +42,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!verifyTelegramPayload(data)) return null;
         const user = await db.user.upsert({
           where: { telegramId: data.id },
-          update: { name: data.first_name, avatarUrl: data.photo_url, lastSeenAt: new Date() },
-          create: { telegramId: data.id, name: data.first_name, avatarUrl: data.photo_url },
+          update: { name: data.first_name, image: data.photo_url, lastSeenAt: new Date() },
+          create: { telegramId: data.id, name: data.first_name, image: data.photo_url },
         });
         if (user.isBanned) return null;
         return { id: user.id, name: user.name };

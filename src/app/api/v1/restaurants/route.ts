@@ -34,8 +34,12 @@ export async function GET(req: NextRequest) {
       id: true, slug: true, type: true, lat: true, lng: true,
       priceBucket: true, avgCheckUzs: true, ratingAvg: true, reviewCount: true,
       coverImageUrl: true,
-      translations: { where: { locale }, select: { name: true } },
+      // All locales, not just the requested one — the UI switches language client-side
+      // instantly without refetching, so restaurant name/description need every locale.
+      translations: { select: { locale: true, name: true, description: true } },
       attributes: true,
+      hours: { orderBy: { dayOfWeek: "asc" } },
+      city: { select: { translations: { where: { locale }, select: { name: true } } } },
       district: { select: { translations: { where: { locale }, select: { name: true } } } },
     },
   });

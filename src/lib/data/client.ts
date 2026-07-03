@@ -1,15 +1,15 @@
 /**
- * Mock data client. Every export here mirrors a real route already implemented
- * in src/app/api/v1/** — same request shape, same response shape, same validation
- * rules (e.g. the +998 owner-phone regex). When the real backend is wired up, only
- * the *bodies* of these functions change to `fetch(...)` calls; no UI code should
- * need to change.
+ * Data client. getMapData / getRestaurant / listNearby now hit the real database via the
+ * live API routes. createSubmission / listSubmissionQueue / decideSubmission / createReview
+ * are still backed by the in-memory mock store — those routes require a signed-in session,
+ * and auth isn't wired into the UI yet (next phase). Once it is, the same swap applies to
+ * them: replace the function body with a fetch() call, keep the signature identical.
  */
 import {
   nextRestaurantId,
   nextReviewId,
   nextSubmissionId,
-  restaurants,
+  restaurants as mockRestaurants,
   slugify,
   submissions,
 } from "./mock-store";
@@ -17,15 +17,19 @@ import { isOpenNow, isValidOwnerPhone } from "./utils";
 import { CATEGORY_EMOJI } from "./types";
 import type {
   CreateReviewInput,
-  MapCluster,
+  EstablishmentType,
+  Locale,
   MapData,
   MapMarker,
   NearbyFilters,
   PlaceSubmission,
   PlaceSubmissionInput,
   Review,
+  RestaurantAttributes,
   RestaurantDetail,
   RestaurantSummary,
+  TranslatedText,
+  WorkingHours,
 } from "./types";
 
 const NETWORK_DELAY_MS = 120;
@@ -36,98 +40,218 @@ const CURRENT_USER = "Siz"; // "You" — stand-in until real auth is wired.
 type BBox = { west: number; south: number; east: number; north: number };
 const inBBox = (lat: number, lng: number, b: BBox) => lat >= b.south && lat <= b.north && lng >= b.west && lng <= b.east;
 
-/** mirrors GET /api/v1/map?west=&south=&east=&north=&zoom= */
-export async function getMapData(params: BBox & { zoom: number }): Promise<MapData> {
-  const CLUSTER_ZOOM_THRESHOLD = 8;
-
-  if (params.zoom < CLUSTER_ZOOM_THRESHOLD) {
-    const byCity = new Map<string, { lat: number; lng: number; count: number }>();
-    for (const r of restaurants) {
-      if (!inBBox(r.lat, r.lng, params)) continue;
-      const entry = byCity.get(r.cityName) ?? { lat: 0, lng: 0, count: 0 };
-      entry.lat += r.lat;
-      entry.lng += r.lng;
-      entry.count += 1;
-      byCity.set(r.cityName, entry);
-    }
-    const items: MapCluster[] = [...byCity.entries()].map(([cityName, e]) => ({
-      id: `cluster-${cityName}`,
-      lat: e.lat / e.count,
-      lng: e.lng / e.count,
-      count: e.count,
-      label: cityName,
-    }));
-    return delay({ type: "clusters", items });
-  }
-
-  const items: MapMarker[] = [
-    ...restaurants
-      .filter((r) => inBBox(r.lat, r.lng, params))
-      .map((r) => ({
-        id: r.id,
-        slug: r.slug,
-        lat: r.lat,
-        lng: r.lng,
-        rating: r.ratingAvg,
-        priceBucket: r.priceBucket,
-        type: r.type,
-        status: "APPROVED" as const,
-        name: r.name.uz,
-        emoji: r.emoji,
-      })),
-    ...submissions
-      .filter((s) => (s.status === "PENDING" || s.status === "IN_REVIEW") && inBBox(s.lat, s.lng, params))
-      .map((s) => ({
-        id: s.id,
-        slug: s.id,
-        lat: s.lat,
-        lng: s.lng,
-        rating: 0,
-        priceBucket: "MODERATE" as const,
-        type: s.type,
-        status: "PENDING" as const,
-        name: s.name,
-        emoji: CATEGORY_EMOJI[s.type],
-      })),
-  ];
-  return delay({ type: "markers", items });
+/** Relative fetch works in the browser; server components (SSR) need an absolute URL. */
+function apiUrl(path: string) {
+  if (typeof window !== "undefined") return path;
+  const base =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  return `${base}${path}`;
 }
 
-/** mirrors GET /api/v1/restaurants/:slug (not yet built server-side) */
+// ─────────────────────────── shape adapters (Prisma JSON -> frontend types) ───────────────────────────
+
+type RawTranslation = { locale: string; [field: string]: unknown };
+
+function pickTranslated(translations: RawTranslation[] | undefined, field: string): TranslatedText {
+  const out: TranslatedText = { uz: "", ru: "", en: "" };
+  for (const t of translations ?? []) {
+    if (t.locale === "uz" || t.locale === "ru" || t.locale === "en") out[t.locale] = (t[field] as string) ?? "";
+  }
+  return out;
+}
+
+const GRADIENTS: [string, string][] = [
+  ["#14418C", "#2563C4"],
+  ["#D68F27", "#B4322E"],
+  ["#1E9C8D", "#14418C"],
+  ["#B4322E", "#D68F27"],
+  ["#2563C4", "#1E9C8D"],
+  ["#0E3068", "#2563C4"],
+];
+function gradientFor(id: string): [string, string] {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return GRADIENTS[h % GRADIENTS.length];
+}
+
+function mapAttributes(a: Partial<RestaurantAttributes> | null | undefined): RestaurantAttributes {
+  return {
+    delivery: a?.delivery ?? false,
+    takeaway: a?.takeaway ?? false,
+    dineIn: a?.dineIn ?? true,
+    parking: a?.parking ?? false,
+    wifi: a?.wifi ?? false,
+    outdoorSeating: a?.outdoorSeating ?? false,
+    kidsArea: a?.kidsArea ?? false,
+    halal: a?.halal ?? false,
+    vegetarian: a?.vegetarian ?? false,
+    vegan: a?.vegan ?? false,
+    is24h: a?.is24h ?? false,
+  };
+}
+
+function mapHours(hours: Array<{ dayOfWeek: number; opensAt: string | null; closesAt: string | null; isClosed: boolean }> | undefined): WorkingHours[] {
+  return (hours ?? []).map((h) => ({ dayOfWeek: h.dayOfWeek, opensAt: h.opensAt, closesAt: h.closesAt, isClosed: h.isClosed }));
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapSummary(r: any): RestaurantSummary {
+  return {
+    id: r.id,
+    slug: r.slug,
+    type: r.type,
+    name: pickTranslated(r.translations, "name"),
+    cityName: r.city?.translations?.[0]?.name ?? "",
+    districtName: r.district?.translations?.[0]?.name,
+    lat: r.lat,
+    lng: r.lng,
+    priceBucket: r.priceBucket,
+    avgCheckUzs: r.avgCheckUzs ?? 0,
+    ratingAvg: r.ratingAvg,
+    reviewCount: r.reviewCount,
+    gradient: gradientFor(r.id),
+    emoji: CATEGORY_EMOJI[r.type as EstablishmentType],
+    attributes: mapAttributes(r.attributes),
+    hours: mapHours(r.hours),
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapDetail(r: any): RestaurantDetail {
+  return {
+    ...mapSummary(r),
+    description: pickTranslated(r.translations, "description"),
+    address: r.address,
+    phone: r.phone ?? undefined,
+    telegram: r.telegram ?? undefined,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    categories: (r.categories ?? []).map((c: any) => ({
+      id: c.id,
+      name: pickTranslated(c.translations, "name"),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      items: (c.items ?? []).map((it: any) => ({
+        id: it.id,
+        name: pickTranslated(it.translations, "name"),
+        priceUzs: it.priceUzs,
+        weightGrams: it.weightGrams ?? undefined,
+        isPopular: it.isPopular,
+        isSeasonal: it.isSeasonal,
+        // No per-item photos uploaded yet — fall back to the restaurant-level category emoji.
+        emoji: CATEGORY_EMOJI[r.type as EstablishmentType],
+      })),
+    })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    reviews: (r.reviews ?? []).map((rev: any) => ({
+      id: rev.id,
+      restaurantId: rev.restaurantId,
+      userName: rev.user?.name ?? "Foydalanuvchi",
+      ratingOverall: rev.ratingOverall,
+      ratingFood: rev.ratingFood ?? undefined,
+      ratingService: rev.ratingService ?? undefined,
+      ratingAtmosphere: rev.ratingAtmosphere ?? undefined,
+      ratingPrice: rev.ratingPrice ?? undefined,
+      text: rev.text ?? undefined,
+      createdAt: rev.createdAt,
+      isVerifiedVisit: rev.isVerifiedVisit,
+    })),
+  };
+}
+
+// ─────────────────────────── live reads ───────────────────────────
+
+/** mirrors GET /api/v1/map?west=&south=&east=&north=&zoom=&locale= */
+export async function getMapData(params: BBox & { zoom: number; locale?: Locale }): Promise<MapData> {
+  const qs = new URLSearchParams({
+    west: String(params.west),
+    south: String(params.south),
+    east: String(params.east),
+    north: String(params.north),
+    zoom: String(params.zoom),
+    locale: params.locale ?? "uz",
+  });
+  const res = await fetch(apiUrl(`/api/v1/map?${qs}`), { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to load map data");
+  const data = await res.json();
+
+  if (data.type === "clusters") {
+    return { type: "clusters", items: data.items };
+  }
+
+  const items: MapMarker[] = data.items.map(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (m: any): MapMarker => ({
+      id: m.id,
+      slug: m.slug,
+      lat: m.lat,
+      lng: m.lng,
+      rating: m.rating,
+      priceBucket: m.priceBucket,
+      type: m.type,
+      status: "APPROVED",
+      name: m.name,
+      emoji: CATEGORY_EMOJI[m.type as EstablishmentType],
+    }),
+  );
+
+  // Community submissions still live in the mock store (no auth yet) — overlay any pending
+  // ones here so "add a place" still shows a live pulsing pin on the map immediately.
+  const pending: MapMarker[] = submissions
+    .filter((s) => (s.status === "PENDING" || s.status === "IN_REVIEW") && inBBox(s.lat, s.lng, params))
+    .map((s) => ({
+      id: s.id,
+      slug: s.id,
+      lat: s.lat,
+      lng: s.lng,
+      rating: 0,
+      priceBucket: "MODERATE",
+      type: s.type,
+      status: "PENDING",
+      name: s.name,
+      emoji: CATEGORY_EMOJI[s.type],
+    }));
+
+  return { type: "markers", items: [...items, ...pending] };
+}
+
+/** mirrors GET /api/v1/restaurants/:slug */
 export async function getRestaurant(slug: string): Promise<RestaurantDetail | null> {
-  const found = restaurants.find((r) => r.slug === slug) ?? null;
-  // Clone: callers hold this in React state, and createReview() below also mutates the
-  // stored restaurant in place — without cloning, a caller's own state update (e.g.
-  // prepending the new review) would double up against the mutation it just triggered.
-  return delay(found ? structuredClone(found) : null);
+  const res = await fetch(apiUrl(`/api/v1/restaurants/${slug}`), { cache: "no-store" });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error("Failed to load restaurant");
+  const { restaurant } = await res.json();
+  return mapDetail(restaurant);
 }
 
 /** mirrors GET /api/v1/restaurants */
 export async function listNearby(filters: NearbyFilters = {}): Promise<RestaurantSummary[]> {
-  const q = filters.q?.trim().toLowerCase();
-  let items = restaurants.filter((r) => {
-    if (filters.city && r.cityName.toLowerCase() !== filters.city.toLowerCase()) return false;
-    if (filters.priceBucket && r.priceBucket !== filters.priceBucket) return false;
-    if (filters.halal && !r.attributes.halal) return false;
-    if (filters.delivery && !r.attributes.delivery) return false;
-    if (filters.outdoorSeating && !r.attributes.outdoorSeating) return false;
-    if (filters.wifi && !r.attributes.wifi) return false;
-    if (filters.parking && !r.attributes.parking) return false;
-    if (filters.kidsArea && !r.attributes.kidsArea) return false;
-    if (filters.is24h && !r.attributes.is24h) return false;
-    if (filters.openNow && !isOpenNow(r.hours)) return false;
-    if (q) {
-      const haystack = `${r.name.uz} ${r.name.ru} ${r.name.en} ${r.cityName} ${r.districtName ?? ""}`.toLowerCase();
-      if (!haystack.includes(q)) return false;
-    }
-    return true;
-  });
+  const qs = new URLSearchParams({ limit: "50" });
+  if (filters.city) qs.set("city", filters.city);
+  if (filters.q) qs.set("q", filters.q);
+  if (filters.halal) qs.set("halal", "true");
+  if (filters.priceBucket) qs.set("priceBucket", filters.priceBucket);
 
-  if (filters.sort === "reviews") items = [...items].sort((a, b) => b.reviewCount - a.reviewCount);
-  else items = [...items].sort((a, b) => b.ratingAvg - a.ratingAvg);
+  const res = await fetch(apiUrl(`/api/v1/restaurants?${qs}`), { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to load restaurants");
+  const { items } = await res.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mapped = items.map((r: any) => mapSummary(r));
 
-  return delay(items.map((r) => structuredClone(r)));
+  // The list route doesn't yet accept these as query params — filter client-side for now,
+  // same as the mock did. Fine at today's data volume; move server-side once it grows.
+  if (filters.delivery) mapped = mapped.filter((r: RestaurantSummary) => r.attributes.delivery);
+  if (filters.outdoorSeating) mapped = mapped.filter((r: RestaurantSummary) => r.attributes.outdoorSeating);
+  if (filters.wifi) mapped = mapped.filter((r: RestaurantSummary) => r.attributes.wifi);
+  if (filters.parking) mapped = mapped.filter((r: RestaurantSummary) => r.attributes.parking);
+  if (filters.kidsArea) mapped = mapped.filter((r: RestaurantSummary) => r.attributes.kidsArea);
+  if (filters.is24h) mapped = mapped.filter((r: RestaurantSummary) => r.attributes.is24h);
+  if (filters.openNow) mapped = mapped.filter((r: RestaurantSummary) => isOpenNow(r.hours));
+  if (filters.sort === "reviews") mapped = [...mapped].sort((a: RestaurantSummary, b: RestaurantSummary) => b.reviewCount - a.reviewCount);
+
+  return mapped;
 }
+
+// ─────────────────────────── still-mocked writes (need auth first) ───────────────────────────
 
 /** mirrors POST /api/v1/submissions */
 export async function createSubmission(input: PlaceSubmissionInput): Promise<PlaceSubmission> {
@@ -184,19 +308,7 @@ export async function decideSubmission(
     reviewCount: 0,
     gradient: ["#14418C", "#2563C4"],
     emoji: CATEGORY_EMOJI[submission.type],
-    attributes: {
-      delivery: false,
-      takeaway: false,
-      dineIn: true,
-      parking: false,
-      wifi: false,
-      outdoorSeating: false,
-      kidsArea: false,
-      halal: false,
-      vegetarian: false,
-      vegan: false,
-      is24h: false,
-    },
+    attributes: mapAttributes(null),
     hours: Array.from({ length: 7 }, (_, dayOfWeek) => ({ dayOfWeek, opensAt: "09:00", closesAt: "22:00", isClosed: false })),
     description: { uz: submission.note ?? "", ru: submission.note ?? "", en: submission.note ?? "" },
     address: submission.note ?? "",
@@ -204,7 +316,10 @@ export async function decideSubmission(
     categories: [],
     reviews: [],
   };
-  restaurants.push(restaurant);
+  // Note: this pushes into the mock store, not the real database — approving here won't
+  // make the place show up via the real listNearby()/getMapData() calls above until the
+  // admin queue is wired to the real API too (next phase, needs auth).
+  mockRestaurants.push(restaurant);
   submission.status = "APPROVED";
   submission.createdRestaurantSlug = slug;
 
@@ -213,12 +328,14 @@ export async function decideSubmission(
 
 /** mirrors POST /api/v1/reviews */
 export async function createReview(restaurantSlug: string, input: CreateReviewInput): Promise<Review> {
-  const restaurant = restaurants.find((r) => r.slug === restaurantSlug);
-  if (!restaurant) throw new Error("Restaurant not found");
+  // The restaurant now almost certainly came from the real API, not the mock store, so
+  // there's usually nothing to mutate here — just echo back a review object the caller
+  // can append to its own local state. Once auth lands this becomes a real POST.
+  const restaurant = mockRestaurants.find((r) => r.slug === restaurantSlug);
 
   const review: Review = {
     id: nextReviewId(),
-    restaurantId: restaurant.id,
+    restaurantId: restaurant?.id ?? restaurantSlug,
     userName: CURRENT_USER,
     ratingOverall: input.ratingOverall,
     ratingFood: input.ratingFood,
@@ -229,10 +346,13 @@ export async function createReview(restaurantSlug: string, input: CreateReviewIn
     createdAt: new Date().toISOString(),
     mine: true,
   };
-  restaurant.reviews = [review, ...restaurant.reviews];
-  restaurant.reviewCount = restaurant.reviews.length;
-  restaurant.ratingAvg =
-    Math.round((restaurant.reviews.reduce((sum, r) => sum + r.ratingOverall, 0) / restaurant.reviews.length) * 10) / 10;
+
+  if (restaurant) {
+    restaurant.reviews = [review, ...restaurant.reviews];
+    restaurant.reviewCount = restaurant.reviews.length;
+    restaurant.ratingAvg =
+      Math.round((restaurant.reviews.reduce((sum, r) => sum + r.ratingOverall, 0) / restaurant.reviews.length) * 10) / 10;
+  }
 
   return delay(review);
 }

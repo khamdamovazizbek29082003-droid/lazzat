@@ -9,17 +9,43 @@ export type MapMarker = {
   rating: number;
   priceBucket: string;
   type: string;
+  name: string;
 };
 
-/** Markers inside a viewport bounding box — feeds the 3D map + supercluster. */
-export async function markersInBBox(b: { west: number; south: number; east: number; north: number }, limit = 2000) {
+/** Markers inside a viewport bounding box — feeds the 3D map at street-level zoom. */
+export async function markersInBBox(
+  b: { west: number; south: number; east: number; north: number },
+  locale: "uz" | "ru" | "en" = "uz",
+  limit = 2000,
+) {
   return db.$queryRaw<MapMarker[]>(Prisma.sql`
-    SELECT id, slug, lat, lng,
-           "ratingAvg" AS rating, "priceBucket"::text AS "priceBucket", type::text AS type
-    FROM "Restaurant"
-    WHERE status = 'APPROVED'
-      AND location && ST_MakeEnvelope(${b.west}, ${b.south}, ${b.east}, ${b.north}, 4326)::geography
+    SELECT r.id, r.slug, r.lat, r.lng,
+           r."ratingAvg" AS rating, r."priceBucket"::text AS "priceBucket", r.type::text AS type,
+           rt.name AS name
+    FROM "Restaurant" r
+    JOIN "RestaurantTranslation" rt ON rt."restaurantId" = r.id AND rt.locale = ${locale}::"Locale"
+    WHERE r.status = 'APPROVED'
+      AND r.location && ST_MakeEnvelope(${b.west}, ${b.south}, ${b.east}, ${b.north}, 4326)::geography
     LIMIT ${limit}
+  `);
+}
+
+export type MapClusterRow = { id: string; lat: number; lng: number; count: number; label: string };
+
+/** City-grouped counts for the zoomed-out (country/region) map view. */
+export async function clustersByCity(
+  b: { west: number; south: number; east: number; north: number },
+  locale: "uz" | "ru" | "en" = "uz",
+) {
+  return db.$queryRaw<MapClusterRow[]>(Prisma.sql`
+    SELECT c.id AS id, AVG(r.lat)::float AS lat, AVG(r.lng)::float AS lng,
+           COUNT(*)::int AS count, ct.name AS label
+    FROM "Restaurant" r
+    JOIN "City" c ON c.id = r."cityId"
+    JOIN "CityTranslation" ct ON ct."cityId" = c.id AND ct.locale = ${locale}::"Locale"
+    WHERE r.status = 'APPROVED'
+      AND r.location && ST_MakeEnvelope(${b.west}, ${b.south}, ${b.east}, ${b.north}, 4326)::geography
+    GROUP BY c.id, ct.name
   `);
 }
 

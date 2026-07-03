@@ -17,12 +17,12 @@ export function hasRole(user: SessionUser | null, min: Role): user is SessionUse
 }
 
 /** Owner scope is per-restaurant via an APPROVED claim; moderators+ bypass. */
-export async function requireRestaurantOwner(user: SessionUser | null, restaurantId: string) {
-  if (!user) throw Object.assign(new Error("Unauthorized"), { status: 401 });
-  if (ROLE_RANK[user.role] >= ROLE_RANK.MODERATOR) return;
+export async function canEditRestaurant(user: SessionUser | null, restaurantId: string): Promise<boolean> {
+  if (!user) return false;
+  if (ROLE_RANK[user.role] >= ROLE_RANK.MODERATOR) return true;
   const claim = await db.ownerClaim.findFirst({
     where: { restaurantId, userId: user.id, status: "APPROVED" },
     select: { id: true },
   });
-  if (!claim) throw Object.assign(new Error("Forbidden"), { status: 403 });
+  return !!claim;
 }

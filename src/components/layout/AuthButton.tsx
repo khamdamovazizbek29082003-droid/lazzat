@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useT } from "@/components/providers/LocaleProvider";
 import { TelegramLoginButton } from "./TelegramLoginButton";
@@ -50,6 +51,13 @@ export function AuthButton() {
                 {session.user.name ?? session.user.email}
               </div>
             </div>
+            <Link
+              href="/my-restaurants"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2.5 text-sm font-medium text-[var(--text)] transition hover:bg-[var(--surface-2)]"
+            >
+              {t("my_restaurants")}
+            </Link>
             <button
               onClick={() => signOut()}
               className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-medium text-anor transition hover:bg-[var(--surface-2)]"

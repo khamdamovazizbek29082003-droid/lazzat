@@ -103,6 +103,7 @@ export interface RestaurantDetail extends RestaurantSummary {
   address: string;
   phone?: string;
   telegram?: string;
+  verifiedOwner: boolean;
   categories: MenuCategory[];
   reviews: Review[];
 }
@@ -182,6 +183,20 @@ export interface Region {
   id: string;
   name: string;
   cities: { slug: string; name: string }[];
+}
+
+export type ClaimEvidenceType = "PHONE_VERIFICATION" | "DOCUMENT" | "UTILITY_BILL" | "OTHER";
+
+export interface PendingClaim {
+  id: string;
+  restaurantSlug: string;
+  restaurantName: string;
+  restaurantPhone?: string;
+  userName: string;
+  evidenceType: ClaimEvidenceType;
+  evidenceUrl?: string;
+  note?: string;
+  createdAt: string;
 }
 
 export interface AdminRestaurant {

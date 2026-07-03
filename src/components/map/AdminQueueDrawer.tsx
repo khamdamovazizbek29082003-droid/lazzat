@@ -2,18 +2,35 @@
 
 import { useEffect, useState } from "react";
 import { useT } from "@/components/providers/LocaleProvider";
-import { decideReview, decideSubmission, listReviewQueue, listSubmissionQueue, searchAdminRestaurants } from "@/lib/data/client";
-import { CATEGORY_EMOJI, type AdminRestaurant, type PendingReview, type PlaceSubmission } from "@/lib/data/types";
+import {
+  decideClaim,
+  decideReview,
+  decideSubmission,
+  listClaimQueue,
+  listReviewQueue,
+  listSubmissionQueue,
+  searchAdminRestaurants,
+} from "@/lib/data/client";
+import { CATEGORY_EMOJI, type AdminRestaurant, type ClaimEvidenceType, type PendingClaim, type PendingReview, type PlaceSubmission } from "@/lib/data/types";
+import type { DictKey } from "@/lib/i18n/dictionaries";
 import { StarRating } from "@/components/restaurant/StarRating";
 import { EditRestaurantPanel } from "./EditRestaurantPanel";
 
-type Tab = "places" | "reviews" | "restaurants";
+type Tab = "places" | "reviews" | "restaurants" | "claims";
+
+const EVIDENCE_LABEL: Record<ClaimEvidenceType, DictKey> = {
+  PHONE_VERIFICATION: "evidence_phone",
+  DOCUMENT: "evidence_document",
+  UTILITY_BILL: "evidence_utility_bill",
+  OTHER: "evidence_other",
+};
 
 export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; onDecided: () => void }) {
   const t = useT();
   const [tab, setTab] = useState<Tab>("places");
   const [items, setItems] = useState<PlaceSubmission[]>([]);
   const [reviews, setReviews] = useState<PendingReview[]>([]);
+  const [claims, setClaims] = useState<PendingClaim[]>([]);
   const [restaurantQuery, setRestaurantQuery] = useState("");
   const [restaurants, setRestaurants] = useState<AdminRestaurant[]>([]);
   const [editing, setEditing] = useState<AdminRestaurant | null>(null);
@@ -21,6 +38,7 @@ export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; 
   const refresh = () => {
     listSubmissionQueue().then(setItems);
     listReviewQueue().then(setReviews);
+    listClaimQueue().then(setClaims);
   };
   useEffect(() => {
     refresh();
@@ -41,6 +59,11 @@ export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; 
     await decideReview(id, action);
     refresh();
     onDecided();
+  };
+
+  const decideOwnerClaim = async (id: string, action: "approve" | "reject") => {
+    await decideClaim(id, action);
+    refresh();
   };
 
   return (
@@ -79,6 +102,14 @@ export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; 
           }`}
         >
           {t("admin_tab_restaurants")}
+        </button>
+        <button
+          onClick={() => setTab("claims")}
+          className={`flex-1 rounded-full py-1.5 text-xs font-bold transition ${
+            tab === "claims" ? "bg-cobalt text-white" : "text-[var(--text-sub)]"
+          }`}
+        >
+          {t("admin_tab_claims")} {claims.length ? `(${claims.length})` : ""}
         </button>
       </div>
 
@@ -169,6 +200,38 @@ export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; 
               >
                 {t("edit")}
               </button>
+            </div>
+          ))}
+        </>
+      )}
+
+      {tab === "claims" && (
+        <>
+          {claims.length === 0 && <p className="py-4 text-sm text-[var(--text-sub)]">{t("admin_claims_empty")}</p>}
+          {claims.map((c) => (
+            <div key={c.id} className="mb-2.5 rounded-xl border border-[var(--border)] p-3">
+              <div className="font-bold text-[var(--text)]">{c.restaurantName}</div>
+              <div className="my-1 text-xs text-[var(--text-sub)]">
+                {c.userName} · {t(EVIDENCE_LABEL[c.evidenceType])}
+              </div>
+              {c.note && <div className="my-1 text-xs text-[var(--text)]">&ldquo;{c.note}&rdquo;</div>}
+              {c.evidenceUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={c.evidenceUrl} alt="" className="my-1.5 h-20 w-20 rounded-lg object-cover" />
+              )}
+              {c.restaurantPhone && (
+                <a href={`tel:${c.restaurantPhone}`} className="my-1 block text-sm font-bold text-cobalt">
+                  📞 {t("call_owner")}: {c.restaurantPhone}
+                </a>
+              )}
+              <div className="mt-2 flex gap-2">
+                <button onClick={() => decideOwnerClaim(c.id, "approve")} className="flex-1 rounded-lg bg-turquoise py-1.5 text-xs font-bold text-white">
+                  ✓ {t("approve")}
+                </button>
+                <button onClick={() => decideOwnerClaim(c.id, "reject")} className="flex-1 rounded-lg bg-anor py-1.5 text-xs font-bold text-white">
+                  ✕ {t("reject")}
+                </button>
+              </div>
             </div>
           ))}
         </>

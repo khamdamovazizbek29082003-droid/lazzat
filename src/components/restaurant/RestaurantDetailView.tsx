@@ -12,6 +12,7 @@ import { photoForType } from "@/lib/data/photos";
 import type { RestaurantDetail, RestaurantSummary } from "@/lib/data/types";
 import { closesAtLabel, formatUzs, isOpenNow } from "@/lib/data/utils";
 import { useFavorites } from "@/lib/hooks/useFavorites";
+import { ClaimBusinessCard } from "./ClaimBusinessCard";
 import { ReviewForm } from "./ReviewForm";
 import { ReviewList } from "./ReviewList";
 
@@ -246,6 +247,7 @@ export function RestaurantDetailView({
                 {t("view_map")}
               </Link>
             </div>
+            <ClaimBusinessCard restaurantSlug={restaurant.slug} verifiedOwner={restaurant.verifiedOwner} />
           </aside>
         </div>
 

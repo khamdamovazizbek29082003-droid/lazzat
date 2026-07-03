@@ -9,12 +9,14 @@ import { isOpenNow, isValidOwnerPhone } from "./utils";
 import { CATEGORY_EMOJI } from "./types";
 import type {
   AdminRestaurant,
+  ClaimEvidenceType,
   CreateReviewInput,
   EstablishmentType,
   Locale,
   MapData,
   MapMarker,
   NearbyFilters,
+  PendingClaim,
   PendingReview,
   PlaceSubmission,
   PlaceSubmissionInput,
@@ -115,6 +117,7 @@ function mapDetail(r: any): RestaurantDetail {
     address: r.address,
     phone: r.phone ?? undefined,
     telegram: r.telegram ?? undefined,
+    verifiedOwner: r.verifiedOwner ?? false,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     categories: (r.categories ?? []).map((c: any) => ({
       id: c.id,
@@ -426,4 +429,55 @@ export async function updateRestaurant(
 export async function deleteRestaurant(id: string): Promise<void> {
   const res = await fetch(apiUrl(`/api/v1/admin/restaurants/${id}`), { method: "DELETE" });
   if (!res.ok) throw new Error(await errorFrom(res, "Failed to delete restaurant"));
+}
+
+/** mirrors POST /api/v1/restaurants/:slug/claim */
+export async function claimRestaurant(
+  slug: string,
+  input: { evidenceType: ClaimEvidenceType; evidenceUrl?: string; note?: string },
+): Promise<void> {
+  const res = await fetch(apiUrl(`/api/v1/restaurants/${slug}/claim`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await errorFrom(res, "Failed to submit claim"));
+}
+
+/** mirrors GET /api/v1/my/restaurants — restaurants the current user owns via an approved claim. */
+export async function listMyRestaurants(): Promise<AdminRestaurant[]> {
+  const res = await fetch(apiUrl("/api/v1/my/restaurants"), { cache: "no-store" });
+  if (!res.ok) return [];
+  const { items } = await res.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return items.map((r: any) => mapAdminRestaurant(r));
+}
+
+/** mirrors GET /api/v1/admin/queues/claims — returns [] if not a signed-in moderator. */
+export async function listClaimQueue(): Promise<PendingClaim[]> {
+  const res = await fetch(apiUrl("/api/v1/admin/queues/claims"), { cache: "no-store" });
+  if (!res.ok) return [];
+  const { items } = await res.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return items.map((c: any) => ({
+    id: c.id,
+    restaurantSlug: c.restaurant?.slug ?? "",
+    restaurantName: c.restaurant?.translations?.[0]?.name ?? "",
+    restaurantPhone: c.restaurant?.phone ?? undefined,
+    userName: c.user?.name ?? "—",
+    evidenceType: c.evidenceType,
+    evidenceUrl: c.evidenceUrl ?? undefined,
+    note: c.note ?? undefined,
+    createdAt: typeof c.createdAt === "string" ? c.createdAt : new Date(c.createdAt).toISOString(),
+  }));
+}
+
+/** mirrors POST /api/v1/admin/queues/claims/:id */
+export async function decideClaim(id: string, action: "approve" | "reject"): Promise<void> {
+  const res = await fetch(apiUrl(`/api/v1/admin/queues/claims/${id}`), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action }),
+  });
+  if (!res.ok) throw new Error(await errorFrom(res, "Failed to update claim"));
 }

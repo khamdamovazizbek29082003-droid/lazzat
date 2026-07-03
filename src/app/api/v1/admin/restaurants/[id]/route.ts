@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
-import { hasRole, type SessionUser } from "@/lib/policies";
+import { canEditRestaurant, hasRole, type SessionUser } from "@/lib/policies";
 import { buildSearchText } from "@/lib/search/translit";
 
 const Body = z.object({
@@ -35,14 +35,14 @@ const Body = z.object({
     .length(7),
 });
 
-/** PATCH /api/v1/admin/restaurants/:id — edit a restaurant's core listing info. */
+/** PATCH /api/v1/admin/restaurants/:id — edit a restaurant's core listing info. Moderators+, or the verified owner. */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   const user = session?.user as SessionUser | null;
-  if (!hasRole(user, "MODERATOR")) {
+  const { id } = await params;
+  if (!(await canEditRestaurant(user, id))) {
     return NextResponse.json({ error: user ? "Forbidden" : "Unauthorized" }, { status: user ? 403 : 401 });
   }
-  const { id } = await params;
 
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });

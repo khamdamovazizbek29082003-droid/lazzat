@@ -586,6 +586,7 @@ const curatedRestaurants: RestaurantDetail[] = SEEDS.map((s, i) => {
     address: `${s.cityName}${s.districtName ? ", " + s.districtName : ""}`,
     phone: "+998901234567",
     telegram: `@${s.slug.replace(/-/g, "_")}`,
+    verifiedOwner: false,
     categories: MENU_TEMPLATES[s.menu](),
     reviews,
   };
@@ -676,6 +677,7 @@ const realRestaurants: RestaurantDetail[] = REAL_PLACE_SEEDS.map((s, i) => {
     ),
     address: s.cityName,
     phone: s.phone,
+    verifiedOwner: false,
     categories: MENU_TEMPLATES[TYPE_MENU[s.type]](),
     reviews,
   };

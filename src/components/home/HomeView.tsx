@@ -4,19 +4,21 @@ import { useEffect, useMemo, useState } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { useT } from "@/components/providers/LocaleProvider";
 import { listNearby } from "@/lib/data/client";
-import type { RestaurantSummary } from "@/lib/data/types";
+import type { EstablishmentType, RestaurantSummary } from "@/lib/data/types";
 import { isOpenNow } from "@/lib/data/utils";
 import { FilterChips, type FilterKey } from "./FilterChips";
 import { Hero } from "./Hero";
 import { NationalDishes } from "./NationalDishes";
 import { RegionCityPicker } from "./RegionCityPicker";
 import { RestaurantGrid } from "./RestaurantGrid";
+import { TypeChips } from "./TypeChips";
 
 export function HomeView() {
   const t = useT();
   const [all, setAll] = useState<RestaurantSummary[]>([]);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<Set<FilterKey>>(new Set());
+  const [types, setTypes] = useState<Set<EstablishmentType>>(new Set());
   const [city, setCity] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,9 +33,18 @@ export function HomeView() {
       return next;
     });
 
+  const toggleType = (type: EstablishmentType) =>
+    setTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+
   const filtered = useMemo(() => {
     let items = all;
     if (city) items = items.filter((r) => r.citySlug === city);
+    if (types.size > 0) items = items.filter((r) => types.has(r.type));
     const q = query.trim().toLowerCase();
     if (q) {
       items = items.filter((r) => `${r.name.uz} ${r.name.ru} ${r.name.en} ${r.cityName}`.toLowerCase().includes(q));
@@ -52,7 +63,7 @@ export function HomeView() {
     else if (active.has("topRated")) items = [...items].sort((a, b) => b.ratingAvg - a.ratingAvg);
 
     return items;
-  }, [all, query, active, city]);
+  }, [all, query, active, city, types]);
 
   const cityCount = useMemo(() => new Set(all.map((r) => r.cityName)).size, [all]);
 
@@ -64,6 +75,9 @@ export function HomeView() {
         <NationalDishes />
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <RegionCityPicker value={city} onChange={setCity} />
+        </div>
+        <div className="mt-3">
+          <TypeChips active={types} onToggle={toggleType} />
         </div>
         <div className="mt-3">
           <FilterChips active={active} onToggle={toggleChip} />

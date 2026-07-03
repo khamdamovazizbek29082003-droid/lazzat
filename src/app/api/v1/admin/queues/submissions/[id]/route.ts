@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { hasRole, type SessionUser } from "@/lib/policies";
 import { syncLocation } from "@/lib/geo";
 import { buildSearchText } from "@/lib/search/translit";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 /**
  * POST /api/v1/admin/queues/submissions/:id
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const { action, reason, cityId } = parsed.data;
 
-  const sub = await db.placeSubmission.findUnique({ where: { id } });
+  const sub = await db.placeSubmission.findUnique({ where: { id }, include: { user: { select: { telegramId: true } } } });
   if (!sub || !["PENDING", "IN_REVIEW"].includes(sub.status)) {
     return NextResponse.json({ error: "Submission not found or already resolved." }, { status: 404 });
   }
@@ -48,6 +49,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         reviewedAt: new Date(),
       },
     });
+    if (sub.user.telegramId) {
+      void sendTelegramMessage(
+        sub.user.telegramId,
+        `❌ "${sub.name}" taklifingiz rad etildi.${reason ? ` Sabab: ${reason}` : ""}`,
+      );
+    }
     return NextResponse.json({ submission: updated });
   }
 
@@ -106,6 +113,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
 
   await syncLocation(restaurant.id, sub.lat, sub.lng);
-  // TODO: SMS/Telegram the submitter "your place is live"; invite owner to claim it.
+  if (sub.user.telegramId) {
+    void sendTelegramMessage(
+      sub.user.telegramId,
+      `✅ "${sub.name}" tasdiqlandi va xaritada jonli! Ko'rish: https://lazzat-five.vercel.app/restaurants/${restaurant.slug}`,
+    );
+  }
   return NextResponse.json({ restaurant }, { status: 201 });
 }

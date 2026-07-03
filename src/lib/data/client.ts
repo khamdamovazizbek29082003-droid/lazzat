@@ -338,6 +338,7 @@ export async function createReview(restaurantId: string, input: CreateReviewInpu
     ratingPrice: review.ratingPrice ?? undefined,
     text: review.text ?? undefined,
     createdAt: typeof review.createdAt === "string" ? review.createdAt : new Date(review.createdAt).toISOString(),
+    isVerifiedVisit: review.isVerifiedVisit ?? false,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     media: (review.media ?? []).map((m: any) => ({ url: m.url, type: m.type })),
     mine: true,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 type TelegramUpdate = {
   message?: {
@@ -8,14 +9,6 @@ type TelegramUpdate = {
     from: { id: number; first_name: string; username?: string };
   };
 };
-
-async function sendTelegramMessage(chatId: number, text: string) {
-  await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text }),
-  });
-}
 
 /**
  * POST /api/telegram/webhook — Telegram pushes bot updates here.

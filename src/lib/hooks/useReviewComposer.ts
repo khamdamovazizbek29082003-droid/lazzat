@@ -9,6 +9,25 @@ import type { UploadedMedia } from "@/components/shared/MediaUploader";
 
 const draftKey = (restaurantId: string) => `lazzat:review-draft:${restaurantId}`;
 
+/** Best-effort location for the "verified visit" badge — never blocks or fails the review. */
+function getPositionSafe(timeoutMs = 4000): Promise<{ lat: number; lng: number } | null> {
+  return new Promise((resolve) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return resolve(null);
+    const timer = setTimeout(() => resolve(null), timeoutMs);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        clearTimeout(timer);
+        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(null);
+      },
+      { timeout: timeoutMs, maximumAge: 60_000 },
+    );
+  });
+}
+
 /**
  * Shared review-submit logic for ReviewForm and RestaurantPopupPanel. If the user isn't
  * signed in, the draft (stars + text + media) is stashed in sessionStorage and `needsSignIn`
@@ -30,11 +49,14 @@ export function useReviewComposer(restaurantId: string, onSubmitted: (review: Re
       setSubmitting(true);
       setError(null);
       try {
+        const position = await getPositionSafe();
         const review = await createReview(restaurantId, {
           ratingOverall: s,
           text: t.trim() || undefined,
           photoUrls: m.filter((x) => x.type === "PHOTO").map((x) => x.url),
           videoUrls: m.filter((x) => x.type === "VIDEO").map((x) => x.url),
+          lat: position?.lat,
+          lng: position?.lng,
         });
         onSubmitted(review);
         setStars(0);

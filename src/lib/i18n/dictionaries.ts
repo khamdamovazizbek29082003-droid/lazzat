@@ -197,6 +197,12 @@ const dict = {
     en: "✓ Review submitted — visible after moderation.",
   },
   no_reviews_yet: { uz: "Hali sharhlar yo'q — birinchi bo'ling.", ru: "Отзывов пока нет — будьте первым.", en: "No reviews yet — be the first." },
+  verified_visit: { uz: "Tasdiqlangan tashrif", ru: "Подтверждённый визит", en: "Verified visit" },
+  verified_visit_hint: {
+    uz: "Sharh joyga yaqin joylashuvdan yuborilgan",
+    ru: "Отзыв отправлен рядом с этим местом",
+    en: "Review was submitted near this place",
+  },
   reviews_count: { uz: "sharh", ru: "отзывов", en: "reviews" },
 
   directions: { uz: "Yo'nalish", ru: "Маршрут", en: "Directions" },

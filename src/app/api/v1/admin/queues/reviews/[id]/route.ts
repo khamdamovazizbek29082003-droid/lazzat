@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { hasRole, type SessionUser } from "@/lib/policies";
+import { sendTelegramMessage } from "@/lib/telegram";
 
 const Body = z.object({
   action: z.enum(["approve", "reject"]),
@@ -26,10 +27,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   const { action, reason } = parsed.data;
 
-  const review = await db.review.findUnique({ where: { id } });
+  const review = await db.review.findUnique({
+    where: { id },
+    include: {
+      user: { select: { telegramId: true } },
+      restaurant: { select: { slug: true, translations: { where: { locale: "uz" }, select: { name: true } } } },
+    },
+  });
   if (!review || review.status !== "PENDING") {
     return NextResponse.json({ error: "Review not found or already resolved." }, { status: 404 });
   }
+  const restaurantName = review.restaurant.translations[0]?.name ?? "";
 
   if (action === "reject") {
     const updated = await db.review.update({
@@ -37,7 +45,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       data: { status: "REJECTED" },
     });
     await db.reviewMedia.updateMany({ where: { reviewId: id }, data: { status: "REJECTED" } });
-    void reason;
+    if (review.user.telegramId) {
+      void sendTelegramMessage(
+        review.user.telegramId,
+        `❌ "${restaurantName}" uchun sharhingiz rad etildi.${reason ? ` Sabab: ${reason}` : ""}`,
+      );
+    }
     return NextResponse.json({ review: updated });
   }
 
@@ -60,5 +73,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return r;
   });
 
+  if (review.user.telegramId) {
+    void sendTelegramMessage(
+      review.user.telegramId,
+      `✅ "${restaurantName}" uchun sharhingiz tasdiqlandi va ko'rinmoqda!`,
+    );
+  }
   return NextResponse.json({ review: updated });
 }

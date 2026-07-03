@@ -16,6 +16,14 @@ export function ReviewList({ reviews }: { reviews: Review[] }) {
         <div key={r.id}>
           <div className="flex flex-wrap items-center gap-2 text-sm font-bold text-[var(--text)]">
             {r.userName} <span className="text-saffron">{"★".repeat(r.ratingOverall)}</span>
+            {r.isVerifiedVisit && (
+              <span className="flex items-center gap-1 rounded-full bg-turquoise/15 px-2 py-0.5 text-xs font-semibold text-turquoise" title={t("verified_visit_hint")}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+                {t("verified_visit")}
+              </span>
+            )}
             {r.mine && <span className="text-xs font-semibold text-turquoise">● {t("pending_review")}</span>}
           </div>
           {r.text && <p className="mt-0.5 text-sm text-[var(--text-sub)]">{r.text}</p>}

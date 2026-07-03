@@ -174,6 +174,8 @@ export interface CreateReviewInput {
   text?: string;
   photoUrls?: string[];
   videoUrls?: string[];
+  lat?: number;
+  lng?: number;
 }
 
 export interface Region {

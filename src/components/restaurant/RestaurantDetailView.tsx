@@ -26,6 +26,7 @@ const ATTRIBUTE_BADGES: { key: keyof RestaurantDetail["attributes"]; icon: strin
 ];
 
 function summarizeHours(hours: RestaurantDetail["hours"]) {
+  if (hours.length === 0) return null;
   const first = hours[0];
   const uniform = hours.every(
     (h) => h.opensAt === first.opensAt && h.closesAt === first.closesAt && h.isClosed === first.isClosed,

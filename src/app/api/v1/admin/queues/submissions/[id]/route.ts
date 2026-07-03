@@ -79,6 +79,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           ],
         },
         attributes: { create: {} },
+        hours: {
+          create: Array.from({ length: 7 }, (_, dayOfWeek) => ({
+            dayOfWeek,
+            opensAt: "09:00",
+            closesAt: "22:00",
+            isClosed: false,
+          })),
+        },
+        photos: {
+          create: sub.photoUrls.map((url, i) => ({ url, sortOrder: i, uploadedById: sub.userId, status: "APPROVED" as const })),
+        },
       },
     });
     await tx.placeSubmission.update({

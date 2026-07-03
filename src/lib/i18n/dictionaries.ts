@@ -168,6 +168,8 @@ const dict = {
   sign_in: { uz: "Kirish", ru: "Войти", en: "Sign in" },
   sign_in_google: { uz: "Google orqali kirish", ru: "Войти через Google", en: "Sign in with Google" },
   sign_out: { uz: "Chiqish", ru: "Выйти", en: "Sign out" },
+  sign_in_telegram: { uz: "Telegram", ru: "Telegram", en: "Telegram" },
+  telegram_waiting: { uz: "Botda tasdiqlang…", ru: "Подтвердите в боте…", en: "Confirm in bot…" },
 } as const satisfies Record<string, Record<Locale, string>>;
 
 export type DictKey = keyof typeof dict;

@@ -449,6 +449,26 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// Bot-deep-link Telegram login: the site creates a PENDING row and sends the user to
+// t.me/<bot>?start=<token>; our webhook flips it to CONFIRMED once the user taps Start
+// in the bot chat, using identity data straight from Telegram's own servers (no widget
+// HMAC needed — the webhook is authenticated via a secret_token header instead).
+model TelegramLoginToken {
+  token      String              @id @default(uuid())
+  status     TelegramLoginStatus @default(PENDING)
+  telegramId String?
+  firstName  String?
+  username   String?
+  photoUrl   String?
+  createdAt  DateTime            @default(now())
+  expiresAt  DateTime
+}
+
+enum TelegramLoginStatus {
+  PENDING
+  CONFIRMED
+}
+
 model Review {
   id           String @id @default(uuid())
   restaurantId String

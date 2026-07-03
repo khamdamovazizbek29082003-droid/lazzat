@@ -2,27 +2,7 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
-import { createHash, createHmac } from "node:crypto";
 import { db } from "./db";
-
-/**
- * Telegram Login Widget verification.
- * The widget posts { id, first_name, username, photo_url, auth_date, hash }.
- * hash = HMAC_SHA256(data_check_string, SHA256(bot_token)) — verify server-side,
- * reject stale auth_date (> 10 min). https://core.telegram.org/widgets/login
- */
-function verifyTelegramPayload(data: Record<string, string>): boolean {
-  const { hash, ...fields } = data;
-  if (!hash || !process.env.TELEGRAM_BOT_TOKEN) return false;
-  const checkString = Object.keys(fields)
-    .sort()
-    .map((k) => `${k}=${fields[k]}`)
-    .join("\n");
-  const secretKey = createHash("sha256").update(process.env.TELEGRAM_BOT_TOKEN).digest();
-  const hmac = createHmac("sha256", secretKey).update(checkString).digest("hex");
-  const fresh = Date.now() / 1000 - Number(fields.auth_date) < 600;
-  return hmac === hash && fresh;
-}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
@@ -36,25 +16,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Credentials({
       id: "telegram",
       name: "Telegram",
-      credentials: {
-        id: { label: "id", type: "text" },
-        first_name: { label: "first_name", type: "text" },
-        last_name: { label: "last_name", type: "text" },
-        username: { label: "username", type: "text" },
-        photo_url: { label: "photo_url", type: "text" },
-        auth_date: { label: "auth_date", type: "text" },
-        hash: { label: "hash", type: "text" },
-      },
+      // Bot-deep-link flow: the client only ever has an opaque one-time token; the real
+      // Telegram identity was already confirmed server-side by the webhook (see
+      // src/app/api/telegram/webhook/route.ts) before this token is marked CONFIRMED.
+      credentials: { token: { label: "token", type: "text" } },
       async authorize(creds) {
-        const data = Object.fromEntries(
-          Object.entries(creds).filter(([, v]) => typeof v === "string"),
-        ) as Record<string, string>;
-        if (!verifyTelegramPayload(data)) return null;
+        const token = creds?.token as string | undefined;
+        if (!token) return null;
+
+        const row = await db.telegramLoginToken.findUnique({ where: { token } });
+        if (!row || row.status !== "CONFIRMED" || !row.telegramId || row.expiresAt < new Date()) return null;
+
         const user = await db.user.upsert({
-          where: { telegramId: data.id },
-          update: { name: data.first_name, image: data.photo_url, lastSeenAt: new Date() },
-          create: { telegramId: data.id, name: data.first_name, image: data.photo_url },
+          where: { telegramId: row.telegramId },
+          update: { name: row.firstName, image: row.photoUrl, lastSeenAt: new Date() },
+          create: { telegramId: row.telegramId, name: row.firstName, image: row.photoUrl },
         });
+        await db.telegramLoginToken.delete({ where: { token } });
         if (user.isBanned) return null;
         return { id: user.id, name: user.name };
       },

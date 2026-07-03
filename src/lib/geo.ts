@@ -32,20 +32,20 @@ export async function markersInBBox(
 
 export type MapClusterRow = { id: string; lat: number; lng: number; count: number; label: string };
 
-/** City-grouped counts for the zoomed-out (country/region) map view. */
-export async function clustersByCity(
-  b: { west: number; south: number; east: number; north: number },
-  locale: "uz" | "ru" | "en" = "uz",
-) {
+/**
+ * All 14 regions as map bubbles for the country-zoom view — unlike clustersByCity, this
+ * shows every region even with zero restaurants yet, so the whole country is explorable
+ * on the map from day one (label + count of live restaurants, which may be 0).
+ */
+export async function allRegionsAsClusters(locale: "uz" | "ru" | "en" = "uz") {
   return db.$queryRaw<MapClusterRow[]>(Prisma.sql`
-    SELECT c.id AS id, AVG(r.lat)::float AS lat, AVG(r.lng)::float AS lng,
-           COUNT(*)::int AS count, ct.name AS label
-    FROM "Restaurant" r
-    JOIN "City" c ON c.id = r."cityId"
-    JOIN "CityTranslation" ct ON ct."cityId" = c.id AND ct.locale = ${locale}::"Locale"
-    WHERE r.status = 'APPROVED'
-      AND r.location && ST_MakeEnvelope(${b.west}, ${b.south}, ${b.east}, ${b.north}, 4326)::geography
-    GROUP BY c.id, ct.name
+    SELECT r.id AS id, AVG(c.lat)::float AS lat, AVG(c.lng)::float AS lng,
+           COUNT(res.id) FILTER (WHERE res.status = 'APPROVED')::int AS count, rt.name AS label
+    FROM "Region" r
+    JOIN "City" c ON c."regionId" = r.id
+    JOIN "RegionTranslation" rt ON rt."regionId" = r.id AND rt.locale = ${locale}::"Locale"
+    LEFT JOIN "Restaurant" res ON res."cityId" = c.id
+    GROUP BY r.id, rt.name
   `);
 }
 

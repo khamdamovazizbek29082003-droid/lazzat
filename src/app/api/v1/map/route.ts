@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { clustersByCity, markersInBBox } from "@/lib/geo";
+import { allRegionsAsClusters, markersInBBox } from "@/lib/geo";
 
 /**
  * GET /api/v1/map?west=&south=&east=&north=&zoom=&locale=
- * Below zoom 8 the client renders city-labeled cluster bubbles ("Toshkent · 11"), so this
- * groups by city server-side rather than doing generic pixel-distance clustering — the map
- * UI needs a human-readable label per bubble, not just an arbitrary centroid.
+ * Below zoom 8 the client renders region-labeled cluster bubbles ("Samarqand · 3"), covering
+ * all 14 regions regardless of whether they have restaurants yet — the whole country is
+ * explorable on the map from day one, not just places with existing data.
  * At zoom >= 8 it returns individual restaurant markers.
  */
 const Q = z.object({
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   const bbox = { west, south, east, north };
 
   if (zoom < CLUSTER_ZOOM_THRESHOLD) {
-    const items = await clustersByCity(bbox, locale);
+    const items = await allRegionsAsClusters(locale);
     return NextResponse.json(
       { type: "clusters", items },
       { headers: { "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600" } },

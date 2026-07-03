@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       translations: { select: { locale: true, name: true, description: true } },
       attributes: true,
       hours: { orderBy: { dayOfWeek: "asc" } },
-      city: { select: { translations: { where: { locale }, select: { name: true } } } },
+      city: { select: { slug: true, translations: { where: { locale }, select: { name: true } } } },
       district: { select: { translations: { where: { locale }, select: { name: true } } } },
     },
   });

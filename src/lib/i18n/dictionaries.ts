@@ -83,6 +83,7 @@ const dict = {
   admin_tab_reviews: { uz: "Sharhlar", ru: "Отзывы", en: "Reviews" },
   admin_tab_restaurants: { uz: "Restoranlar", ru: "Рестораны", en: "Restaurants" },
   admin_search_placeholder: { uz: "Nomi bo'yicha qidirish…", ru: "Поиск по названию…", en: "Search by name…" },
+  region_picker_all: { uz: "Barcha hududlar", ru: "Все регионы", en: "All regions" },
   edit: { uz: "Tahrirlash", ru: "Изменить", en: "Edit" },
   edit_restaurant_title: { uz: "Joyni tahrirlash", ru: "Редактировать место", en: "Edit place" },
   field_name_uz: { uz: "Nomi (uz)", ru: "Название (uz)", en: "Name (uz)" },

@@ -84,6 +84,7 @@ export interface RestaurantSummary {
   type: EstablishmentType;
   name: TranslatedText;
   cityName: string;
+  citySlug: string;
   districtName?: string;
   lat: number;
   lng: number;
@@ -173,6 +174,12 @@ export interface CreateReviewInput {
   text?: string;
   photoUrls?: string[];
   videoUrls?: string[];
+}
+
+export interface Region {
+  id: string;
+  name: string;
+  cities: { slug: string; name: string }[];
 }
 
 export interface AdminRestaurant {

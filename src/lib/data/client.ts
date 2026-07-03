@@ -18,6 +18,7 @@ import type {
   PendingReview,
   PlaceSubmission,
   PlaceSubmissionInput,
+  Region,
   Review,
   RestaurantAttributes,
   RestaurantDetail,
@@ -91,6 +92,7 @@ function mapSummary(r: any): RestaurantSummary {
     type: r.type,
     name: pickTranslated(r.translations, "name"),
     cityName: r.city?.translations?.[0]?.name ?? "",
+    citySlug: r.city?.slug ?? "",
     districtName: r.district?.translations?.[0]?.name,
     lat: r.lat,
     lng: r.lng,
@@ -225,6 +227,14 @@ export async function listNearby(filters: NearbyFilters = {}): Promise<Restauran
   if (filters.sort === "reviews") mapped = [...mapped].sort((a: RestaurantSummary, b: RestaurantSummary) => b.reviewCount - a.reviewCount);
 
   return mapped;
+}
+
+/** mirrors GET /api/v1/regions?locale= — all regions with their cities, for region/city pickers. */
+export async function listRegions(locale: Locale = "uz"): Promise<Region[]> {
+  const res = await fetch(apiUrl(`/api/v1/regions?locale=${locale}`), { cache: "no-store" });
+  if (!res.ok) return [];
+  const { items } = await res.json();
+  return items;
 }
 
 // ─────────────────────────── live writes (require a signed-in session) ───────────────────────────

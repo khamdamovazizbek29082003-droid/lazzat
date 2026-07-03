@@ -9,6 +9,7 @@ import { isOpenNow } from "@/lib/data/utils";
 import { FilterChips, type FilterKey } from "./FilterChips";
 import { Hero } from "./Hero";
 import { NationalDishes } from "./NationalDishes";
+import { RegionCityPicker } from "./RegionCityPicker";
 import { RestaurantGrid } from "./RestaurantGrid";
 
 export function HomeView() {
@@ -16,6 +17,7 @@ export function HomeView() {
   const [all, setAll] = useState<RestaurantSummary[]>([]);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<Set<FilterKey>>(new Set());
+  const [city, setCity] = useState<string | null>(null);
 
   useEffect(() => {
     listNearby().then(setAll);
@@ -31,6 +33,7 @@ export function HomeView() {
 
   const filtered = useMemo(() => {
     let items = all;
+    if (city) items = items.filter((r) => r.citySlug === city);
     const q = query.trim().toLowerCase();
     if (q) {
       items = items.filter((r) => `${r.name.uz} ${r.name.ru} ${r.name.en} ${r.cityName}`.toLowerCase().includes(q));
@@ -49,7 +52,7 @@ export function HomeView() {
     else if (active.has("topRated")) items = [...items].sort((a, b) => b.ratingAvg - a.ratingAvg);
 
     return items;
-  }, [all, query, active]);
+  }, [all, query, active, city]);
 
   const cityCount = useMemo(() => new Set(all.map((r) => r.cityName)).size, [all]);
 
@@ -59,7 +62,10 @@ export function HomeView() {
       <main className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
         <Hero value={query} onChange={setQuery} placeCount={all.length} cityCount={cityCount} />
         <NationalDishes />
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <RegionCityPicker value={city} onChange={setCity} />
+        </div>
+        <div className="mt-3">
           <FilterChips active={active} onToggle={toggleChip} />
         </div>
         <div className="mt-8 flex items-baseline justify-between">

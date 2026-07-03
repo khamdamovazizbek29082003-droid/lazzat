@@ -6,6 +6,7 @@ import { useLocale, useT } from "@/components/providers/LocaleProvider";
 import { ThemeToggle } from "@/components/providers/ThemeToggle";
 import { LOCALES } from "@/lib/i18n/dictionaries";
 import { Ikat } from "./Ikat";
+import { AuthButton } from "./AuthButton";
 
 export function TopBar({ cityName = "Toshkent" }: { cityName?: string }) {
   const { locale, setLocale } = useLocale();
@@ -42,6 +43,7 @@ export function TopBar({ cityName = "Toshkent" }: { cityName?: string }) {
           ))}
         </div>
         <ThemeToggle />
+        <AuthButton />
       </nav>
     </header>
   );

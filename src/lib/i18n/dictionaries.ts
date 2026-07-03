@@ -164,6 +164,10 @@ const dict = {
   address: { uz: "Manzil", ru: "Адрес", en: "Address" },
   phone: { uz: "Telefon", ru: "Телефон", en: "Phone" },
   avg_check: { uz: "O'rtacha chek", ru: "Средний чек", en: "Average check" },
+
+  sign_in: { uz: "Kirish", ru: "Войти", en: "Sign in" },
+  sign_in_google: { uz: "Google orqali kirish", ru: "Войти через Google", en: "Sign in with Google" },
+  sign_out: { uz: "Chiqish", ru: "Выйти", en: "Sign out" },
 } as const satisfies Record<string, Record<Locale, string>>;
 
 export type DictKey = keyof typeof dict;

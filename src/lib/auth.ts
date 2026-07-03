@@ -36,9 +36,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Credentials({
       id: "telegram",
       name: "Telegram",
-      credentials: {},
-      async authorize(_creds, req) {
-        const data = Object.fromEntries(new URL(req.url!).searchParams) as Record<string, string>;
+      credentials: {
+        id: { label: "id", type: "text" },
+        first_name: { label: "first_name", type: "text" },
+        last_name: { label: "last_name", type: "text" },
+        username: { label: "username", type: "text" },
+        photo_url: { label: "photo_url", type: "text" },
+        auth_date: { label: "auth_date", type: "text" },
+        hash: { label: "hash", type: "text" },
+      },
+      async authorize(creds) {
+        const data = Object.fromEntries(
+          Object.entries(creds).filter(([, v]) => typeof v === "string"),
+        ) as Record<string, string>;
         if (!verifyTelegramPayload(data)) return null;
         const user = await db.user.upsert({
           where: { telegramId: data.id },

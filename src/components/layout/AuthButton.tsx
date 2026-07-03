@@ -2,6 +2,7 @@
 
 import { signIn, signOut, useSession } from "next-auth/react";
 import { useT } from "@/components/providers/LocaleProvider";
+import { TelegramLoginButton } from "./TelegramLoginButton";
 
 export function AuthButton() {
   const { data: session, status } = useSession();
@@ -32,11 +33,14 @@ export function AuthButton() {
   }
 
   return (
-    <button
-      onClick={() => signIn("google")}
-      className="rounded-full bg-cobalt px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-cobalt-deep"
-    >
-      {t("sign_in")}
-    </button>
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => signIn("google")}
+        className="rounded-full bg-cobalt px-4 py-1.5 text-sm font-semibold text-white transition hover:bg-cobalt-deep"
+      >
+        {t("sign_in")}
+      </button>
+      <TelegramLoginButton />
+    </div>
   );
 }

@@ -5,6 +5,7 @@ import { bodyFont } from "@/lib/fonts";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { LocaleProvider } from "@/components/providers/LocaleProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { OnboardingModal } from "@/components/account/OnboardingModal";
 
 export const metadata: Metadata = {
   title: "Lazzat — O'zbekistondagi barcha taomlar bitta joyda",
@@ -17,7 +18,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className={`${bodyFont.className} antialiased`}>
         <AuthProvider>
           <ThemeProvider>
-            <LocaleProvider>{children}</LocaleProvider>
+            <LocaleProvider>
+              {children}
+              <OnboardingModal />
+            </LocaleProvider>
           </ThemeProvider>
         </AuthProvider>
       </body>

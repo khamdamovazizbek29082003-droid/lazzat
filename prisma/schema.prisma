@@ -397,7 +397,13 @@ model User {
   phone         String?   @unique
   name          String?
   image         String?
+  // USER = customer (default); OWNER = self-identified restaurant owner, chosen once via
+  // the onboarding modal — unlocks "add a place" on the map. Doesn't grant MODERATOR/ADMIN
+  // powers (ROLE_RANK still gates those separately); see hasRole() in lib/policies.ts.
   role          Role      @default(USER)
+  // Whether the onboarding modal (customer vs owner) has been shown/answered — null/false
+  // means show it, including everyone who signed up before this field existed.
+  onboarded     Boolean   @default(false)
   locale        Locale    @default(uz)
   telegramId    String?   @unique
   googleId      String?   @unique

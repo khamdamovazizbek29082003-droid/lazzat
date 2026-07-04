@@ -153,6 +153,13 @@ export interface PlaceSubmission extends PlaceSubmissionInput {
   createdRestaurantSlug?: string;
 }
 
+export interface Me {
+  id: string;
+  name: string | null;
+  role: "USER" | "OWNER" | "MODERATOR" | "ADMIN";
+  onboarded: boolean;
+}
+
 export interface AdminUser {
   id: string;
   name: string;

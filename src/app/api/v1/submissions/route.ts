@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { findLikelyDuplicates } from "@/lib/geo";
+import { hasRole, type SessionUser } from "@/lib/policies";
 
 /**
  * POST /api/v1/submissions
@@ -27,8 +28,15 @@ const Body = z.object({
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  const userId = (session?.user as any)?.id as string | undefined;
-  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const user = session?.user as SessionUser | null;
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Only self-identified restaurant owners (or staff) can add new places — regular
+  // customers browse/review but don't submit listings. See the onboarding modal / POST
+  // /api/v1/me for how a user becomes an OWNER.
+  if (!hasRole(user, "OWNER")) {
+    return NextResponse.json({ error: "Only restaurant owners can add new places." }, { status: 403 });
+  }
+  const userId = user.id;
 
   // Contribution rate limit: 5 submissions/day/user
   const dayAgo = new Date(Date.now() - 86400_000);

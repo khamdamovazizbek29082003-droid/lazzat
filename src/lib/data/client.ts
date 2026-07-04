@@ -16,6 +16,7 @@ import type {
   Locale,
   MapData,
   MapMarker,
+  Me,
   NearbyFilters,
   PendingClaim,
   PendingReview,
@@ -268,6 +269,7 @@ function mapSubmission(s: any): PlaceSubmission {
 async function errorFrom(res: Response, fallback: string): Promise<string> {
   if (res.status === 401) return "error_sign_in_required";
   const body = await res.json().catch(() => null);
+  if (res.status === 403 && body?.error === "Only restaurant owners can add new places.") return "error_owner_required";
   return body?.error ?? fallback;
 }
 
@@ -506,4 +508,24 @@ export async function listUsers(): Promise<AdminUser[]> {
     createdAt: typeof u.createdAt === "string" ? u.createdAt : new Date(u.createdAt).toISOString(),
     lastSeenAt: typeof u.lastSeenAt === "string" ? u.lastSeenAt : new Date(u.lastSeenAt).toISOString(),
   }));
+}
+
+/** mirrors GET /api/v1/me */
+export async function getMe(): Promise<Me | null> {
+  const res = await fetch(apiUrl("/api/v1/me"), { cache: "no-store" });
+  if (!res.ok) return null;
+  const { user } = await res.json();
+  return user;
+}
+
+/** mirrors PATCH /api/v1/me */
+export async function setAccountType(accountType: "CUSTOMER" | "OWNER"): Promise<Me> {
+  const res = await fetch(apiUrl("/api/v1/me"), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ accountType }),
+  });
+  if (!res.ok) throw new Error(await errorFrom(res, "Failed to update account type"));
+  const { user } = await res.json();
+  return user;
 }

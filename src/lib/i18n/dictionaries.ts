@@ -333,6 +333,41 @@ const dict = {
   sign_in_telegram: { uz: "Telegram", ru: "Telegram", en: "Telegram", kaa: "Telegram" },
   telegram_waiting: { uz: "Botda tasdiqlang…", ru: "Подтвердите в боте…", en: "Confirm in bot…", kaa: "Ботта тастыйықлаң…" },
   signed_in_as: { uz: "Kirgan hisob", ru: "Вы вошли как", en: "Signed in as", kaa: "Кирген аккаунт" },
+
+  onboarding_title: { uz: "Siz kimsiz?", ru: "Кто вы?", en: "Who are you?", kaa: "Сиз кимсиз?" },
+  onboarding_subtitle: {
+    uz: "Bu tanlovni keyinroq o'zgartirishingiz mumkin.",
+    ru: "Этот выбор можно изменить позже.",
+    en: "You can change this choice later.",
+    kaa: "Бул таңлаўды кейинирек өзгертиуиңиз мүмкин.",
+  },
+  onboarding_customer_title: { uz: "Ovqatlanish joyi izlayapman", ru: "Ищу, где поесть", en: "Looking for a place to eat", kaa: "Тамақланатуғын орын излеймен" },
+  onboarding_customer_subtitle: {
+    uz: "Restoranlarni topish, sharh qoldirish",
+    ru: "Искать рестораны, оставлять отзывы",
+    en: "Find restaurants, leave reviews",
+    kaa: "Ресторанларды табыу, пикир қалдырыу",
+  },
+  onboarding_owner_title: { uz: "Restoran/kafe egasiman", ru: "Я владелец ресторана/кафе", en: "I own a restaurant/cafe", kaa: "Ресторан/кафе ийесимен" },
+  onboarding_owner_subtitle: {
+    uz: "Xaritaga joy qo'shish, o'z joyimni boshqarish",
+    ru: "Добавлять места на карту, управлять своим заведением",
+    en: "Add places to the map, manage my listing",
+    kaa: "Картаға орын қосыу, өз орнымды басқарыу",
+  },
+  error_owner_required: {
+    uz: "Faqat restoran egalari yangi joy qo'sha oladi.",
+    ru: "Только владельцы ресторанов могут добавлять новые места.",
+    en: "Only restaurant owners can add new places.",
+    kaa: "Тек ресторан ийелери жаңа орын қоса алады.",
+  },
+  become_owner_prompt: {
+    uz: "Bu joyning egasimisiz yoki yangi joy qo'shmoqchimisiz? Hisobingizni \"Restoran egasi\"ga o'zgartiring.",
+    ru: "Владеете этим местом или хотите добавить новое? Переключите аккаунт на «Владелец ресторана».",
+    en: "Own a place or want to add a new one? Switch your account to \"Restaurant owner\".",
+    kaa: "Бул орынның ийесисиз бе, әлле жаңа орын қосыудысыз ба? Аккаунтыңызды «Ресторан ийеси»ге өзгертиң.",
+  },
+  become_owner_cta: { uz: "Restoran egasiga o'tish", ru: "Стать владельцем ресторана", en: "Switch to restaurant owner", kaa: "Ресторан ийесине өтиу" },
 } as const satisfies Record<string, Record<Locale, string>>;
 
 export type DictKey = keyof typeof dict;

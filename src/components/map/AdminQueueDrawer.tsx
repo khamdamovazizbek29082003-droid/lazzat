@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 import { useT } from "@/components/providers/LocaleProvider";
 import {
   decideClaim,
@@ -9,14 +10,23 @@ import {
   listClaimQueue,
   listReviewQueue,
   listSubmissionQueue,
+  listUsers,
   searchAdminRestaurants,
 } from "@/lib/data/client";
-import { CATEGORY_EMOJI, type AdminRestaurant, type ClaimEvidenceType, type PendingClaim, type PendingReview, type PlaceSubmission } from "@/lib/data/types";
+import {
+  CATEGORY_EMOJI,
+  type AdminRestaurant,
+  type AdminUser,
+  type ClaimEvidenceType,
+  type PendingClaim,
+  type PendingReview,
+  type PlaceSubmission,
+} from "@/lib/data/types";
 import type { DictKey } from "@/lib/i18n/dictionaries";
 import { StarRating } from "@/components/restaurant/StarRating";
 import { EditRestaurantPanel } from "./EditRestaurantPanel";
 
-type Tab = "places" | "reviews" | "restaurants" | "claims";
+type Tab = "places" | "reviews" | "restaurants" | "claims" | "users";
 
 const EVIDENCE_LABEL: Record<ClaimEvidenceType, DictKey> = {
   PHONE_VERIFICATION: "evidence_phone",
@@ -27,6 +37,9 @@ const EVIDENCE_LABEL: Record<ClaimEvidenceType, DictKey> = {
 
 export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; onDecided: () => void }) {
   const t = useT();
+  const { data: session } = useSession();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
   const [tab, setTab] = useState<Tab>("places");
   const [items, setItems] = useState<PlaceSubmission[]>([]);
   const [reviews, setReviews] = useState<PendingReview[]>([]);
@@ -34,6 +47,7 @@ export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; 
   const [restaurantQuery, setRestaurantQuery] = useState("");
   const [restaurants, setRestaurants] = useState<AdminRestaurant[]>([]);
   const [editing, setEditing] = useState<AdminRestaurant | null>(null);
+  const [users, setUsers] = useState<AdminUser[]>([]);
 
   const refresh = () => {
     listSubmissionQueue().then(setItems);
@@ -48,6 +62,11 @@ export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; 
     if (tab !== "restaurants") return;
     searchAdminRestaurants(restaurantQuery).then(setRestaurants);
   }, [tab, restaurantQuery]);
+
+  useEffect(() => {
+    if (tab !== "users" || !isAdmin) return;
+    listUsers().then(setUsers);
+  }, [tab, isAdmin]);
 
   const decidePlace = async (id: string, action: "approve" | "reject") => {
     await decideSubmission(id, action);
@@ -78,10 +97,10 @@ export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; 
         </button>
       </div>
 
-      <div className="mb-3 flex gap-1 rounded-full bg-[var(--surface-2)] p-1">
+      <div className="mb-3 flex gap-1 overflow-x-auto rounded-full bg-[var(--surface-2)] p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <button
           onClick={() => setTab("places")}
-          className={`flex-1 rounded-full py-1.5 text-xs font-bold transition ${
+          className={`shrink-0 rounded-full px-2.5 py-1.5 text-xs font-bold whitespace-nowrap transition ${
             tab === "places" ? "bg-cobalt text-white" : "text-[var(--text-sub)]"
           }`}
         >
@@ -89,7 +108,7 @@ export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; 
         </button>
         <button
           onClick={() => setTab("reviews")}
-          className={`flex-1 rounded-full py-1.5 text-xs font-bold transition ${
+          className={`shrink-0 rounded-full px-2.5 py-1.5 text-xs font-bold whitespace-nowrap transition ${
             tab === "reviews" ? "bg-cobalt text-white" : "text-[var(--text-sub)]"
           }`}
         >
@@ -97,7 +116,7 @@ export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; 
         </button>
         <button
           onClick={() => setTab("restaurants")}
-          className={`flex-1 rounded-full py-1.5 text-xs font-bold transition ${
+          className={`shrink-0 rounded-full px-2.5 py-1.5 text-xs font-bold whitespace-nowrap transition ${
             tab === "restaurants" ? "bg-cobalt text-white" : "text-[var(--text-sub)]"
           }`}
         >
@@ -105,12 +124,22 @@ export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; 
         </button>
         <button
           onClick={() => setTab("claims")}
-          className={`flex-1 rounded-full py-1.5 text-xs font-bold transition ${
+          className={`shrink-0 rounded-full px-2.5 py-1.5 text-xs font-bold whitespace-nowrap transition ${
             tab === "claims" ? "bg-cobalt text-white" : "text-[var(--text-sub)]"
           }`}
         >
           {t("admin_tab_claims")} {claims.length ? `(${claims.length})` : ""}
         </button>
+        {isAdmin && (
+          <button
+            onClick={() => setTab("users")}
+            className={`shrink-0 rounded-full px-2.5 py-1.5 text-xs font-bold whitespace-nowrap transition ${
+              tab === "users" ? "bg-cobalt text-white" : "text-[var(--text-sub)]"
+            }`}
+          >
+            {t("admin_tab_users")}
+          </button>
+        )}
       </div>
 
       {tab === "places" && (
@@ -231,6 +260,30 @@ export function AdminQueueDrawer({ onClose, onDecided }: { onClose: () => void; 
                 <button onClick={() => decideOwnerClaim(c.id, "reject")} className="flex-1 rounded-lg bg-anor py-1.5 text-xs font-bold text-white">
                   ✕ {t("reject")}
                 </button>
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+
+      {tab === "users" && isAdmin && (
+        <>
+          <div className="mb-3 text-sm font-bold text-[var(--text)]">
+            {users.length} {t("admin_users_total")}
+          </div>
+          {users.map((u) => (
+            <div key={u.id} className="mb-2 rounded-xl border border-[var(--border)] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="truncate font-bold text-[var(--text)]">{u.name}</div>
+                {u.role !== "USER" && (
+                  <span className="shrink-0 rounded-full bg-cobalt/10 px-2 py-0.5 text-[10px] font-bold text-cobalt">{u.role}</span>
+                )}
+              </div>
+              <div className="mt-0.5 truncate text-xs text-[var(--text-sub)]">
+                {u.email ?? (u.telegramId ? `Telegram: ${u.telegramId}` : "—")}
+              </div>
+              <div className="mt-0.5 text-[11px] text-[var(--text-sub)]">
+                {t("admin_users_joined")} {u.createdAt.slice(0, 10)}
               </div>
             </div>
           ))}

@@ -153,6 +153,17 @@ export interface PlaceSubmission extends PlaceSubmissionInput {
   createdRestaurantSlug?: string;
 }
 
+export interface AdminUser {
+  id: string;
+  name: string;
+  email?: string;
+  telegramId?: string;
+  role: "USER" | "OWNER" | "MODERATOR" | "ADMIN";
+  isBanned: boolean;
+  createdAt: string;
+  lastSeenAt: string;
+}
+
 export interface NearbyFilters {
   q?: string;
   city?: string;

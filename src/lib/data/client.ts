@@ -9,6 +9,7 @@ import { isOpenNow, isValidOwnerPhone } from "./utils";
 import { CATEGORY_EMOJI } from "./types";
 import type {
   AdminRestaurant,
+  AdminUser,
   ClaimEvidenceType,
   CreateReviewInput,
   EstablishmentType,
@@ -487,4 +488,22 @@ export async function decideClaim(id: string, action: "approve" | "reject"): Pro
     body: JSON.stringify({ action }),
   });
   if (!res.ok) throw new Error(await errorFrom(res, "Failed to update claim"));
+}
+
+/** mirrors GET /api/v1/admin/users — returns [] if not a signed-in admin. */
+export async function listUsers(): Promise<AdminUser[]> {
+  const res = await fetch(apiUrl("/api/v1/admin/users"), { cache: "no-store" });
+  if (!res.ok) return [];
+  const { items } = await res.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return items.map((u: any) => ({
+    id: u.id,
+    name: u.name ?? "—",
+    email: u.email ?? undefined,
+    telegramId: u.telegramId ?? undefined,
+    role: u.role,
+    isBanned: u.isBanned,
+    createdAt: typeof u.createdAt === "string" ? u.createdAt : new Date(u.createdAt).toISOString(),
+    lastSeenAt: typeof u.lastSeenAt === "string" ? u.lastSeenAt : new Date(u.lastSeenAt).toISOString(),
+  }));
 }

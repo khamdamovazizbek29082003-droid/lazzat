@@ -94,6 +94,9 @@ const dict = {
   admin_tab_reviews: { uz: "Sharhlar", ru: "Отзывы", en: "Reviews", kaa: "Пикирлер" },
   admin_tab_restaurants: { uz: "Restoranlar", ru: "Рестораны", en: "Restaurants", kaa: "Ресторанлар" },
   admin_tab_claims: { uz: "Egalik", ru: "Владение", en: "Claims", kaa: "Ийелик" },
+  admin_tab_users: { uz: "Foydalanuvchilar", ru: "Пользователи", en: "Users", kaa: "Пайдаланыушылар" },
+  admin_users_total: { uz: "jami", ru: "всего", en: "total", kaa: "барлығы" },
+  admin_users_joined: { uz: "qo'shildi", ru: "присоединился", en: "joined", kaa: "қосылды" },
   admin_claims_empty: {
     uz: "Egalik so'rovlari yo'q ✓",
     ru: "Запросов на владение нет ✓",

@@ -26,9 +26,10 @@ export function OnboardingModal() {
     setSaving(type);
     try {
       await setAccountType(type);
-      // The role is baked into the JWT at sign-in and never re-read on its own;
-      // force a refresh so components reading useSession() see the new role right away.
-      await update();
+      // The role is baked into the JWT at sign-in and never re-read on its own; update()
+      // must be called with a (even empty) argument, or next-auth sends a plain GET instead
+      // of the POST that actually triggers the jwt callback's trigger: "update" branch.
+      await update({});
       setShow(false);
     } finally {
       setSaving(null);

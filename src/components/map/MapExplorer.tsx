@@ -129,6 +129,9 @@ export function MapExplorer({ initialSlug }: { initialSlug?: string }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const role = (session?.user as any)?.role as string | undefined;
   const canModerate = role === "MODERATOR" || role === "ADMIN";
+  // Only self-identified restaurant owners (or staff) get the "add a place" option at all —
+  // customers never see the button, not just get blocked on submit. See onboarding modal.
+  const canAddPlace = role === "OWNER" || canModerate;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -355,6 +358,7 @@ export function MapExplorer({ initialSlug }: { initialSlug?: string }) {
         view={zoom < CLUSTER_ZOOM_THRESHOLD ? "country" : "city"}
         addMode={addMode}
         onToggleAdd={() => {
+          if (!canAddPlace) return;
           setAddMode((v) => !v);
           setDraft(null);
           setSelectedSlug(null);
@@ -364,6 +368,7 @@ export function MapExplorer({ initialSlug }: { initialSlug?: string }) {
         pendingCount={pendingCount}
         onBackToCountry={backToCountry}
         canModerate={canModerate}
+        canAddPlace={canAddPlace}
       />
 
       <div className="absolute right-4 bottom-5 z-40 flex flex-col items-end gap-2">

@@ -4,7 +4,6 @@ import { useState, type ReactNode } from "react";
 import { useT } from "@/components/providers/LocaleProvider";
 import { CATEGORY_EMOJI, type EstablishmentType } from "@/lib/data/types";
 import { isValidOwnerPhone } from "@/lib/data/utils";
-import { setAccountType } from "@/lib/data/client";
 import { MediaUploader, type UploadedMedia } from "@/components/shared/MediaUploader";
 import { Panel } from "./Panel";
 
@@ -60,51 +59,24 @@ export function AddPlaceForm({
   const [media, setMedia] = useState<UploadedMedia[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [needsOwner, setNeedsOwner] = useState(false);
-  const [becomingOwner, setBecomingOwner] = useState(false);
-
-  const buildInput = () => ({
-    name: name.trim(),
-    type,
-    ownerPhone: phone.replace(/[\s-]/g, ""),
-    note: note.trim() || undefined,
-    photoUrls: media.filter((m) => m.type === "PHOTO").map((m) => m.url),
-    videoUrls: media.filter((m) => m.type === "VIDEO").map((m) => m.url),
-  });
 
   const submit = async () => {
     if (!name.trim()) return setError(t("error_name_required"));
     if (!isValidOwnerPhone(phone)) return setError(t("error_phone_invalid"));
     setSubmitting(true);
     setError(null);
-    setNeedsOwner(false);
     try {
-      await onSubmit(buildInput());
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "";
-      if (message === "error_owner_required") {
-        setNeedsOwner(true);
-        setError(t("become_owner_prompt"));
-      } else {
-        setError(message === "error_sign_in_required" ? t("error_sign_in_required") : t("error_generic"));
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const becomeOwnerAndRetry = async () => {
-    setBecomingOwner(true);
-    try {
-      await setAccountType("OWNER");
-      setNeedsOwner(false);
-      setError(null);
-      setSubmitting(true);
-      await onSubmit(buildInput());
+      await onSubmit({
+        name: name.trim(),
+        type,
+        ownerPhone: phone.replace(/[\s-]/g, ""),
+        note: note.trim() || undefined,
+        photoUrls: media.filter((m) => m.type === "PHOTO").map((m) => m.url),
+        videoUrls: media.filter((m) => m.type === "VIDEO").map((m) => m.url),
+      });
     } catch (err) {
       setError(err instanceof Error && err.message === "error_sign_in_required" ? t("error_sign_in_required") : t("error_generic"));
     } finally {
-      setBecomingOwner(false);
       setSubmitting(false);
     }
   };
@@ -153,23 +125,13 @@ export function AddPlaceForm({
         <MediaUploader value={media} onChange={setMedia} />
       </Field>
       {error && <p className="mb-2 text-xs font-semibold text-anor">{error}</p>}
-      {needsOwner ? (
-        <button
-          onClick={becomeOwnerAndRetry}
-          disabled={becomingOwner}
-          className="w-full rounded-xl bg-saffron py-2 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-60"
-        >
-          {t("become_owner_cta")}
-        </button>
-      ) : (
-        <button
-          onClick={submit}
-          disabled={submitting}
-          className="w-full rounded-xl bg-cobalt py-2 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-60"
-        >
-          {t("submit_for_review")}
-        </button>
-      )}
+      <button
+        onClick={submit}
+        disabled={submitting}
+        className="w-full rounded-xl bg-cobalt py-2 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-60"
+      >
+        {t("submit_for_review")}
+      </button>
       <p className="mt-2 text-xs leading-relaxed text-[var(--text-sub)]">{t("submit_hint")}</p>
     </Panel>
   );

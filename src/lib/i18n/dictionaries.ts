@@ -361,13 +361,6 @@ const dict = {
     en: "Only restaurant owners can add new places.",
     kaa: "Тек ресторан ийелери жаңа орын қоса алады.",
   },
-  become_owner_prompt: {
-    uz: "Bu joyning egasimisiz yoki yangi joy qo'shmoqchimisiz? Hisobingizni \"Restoran egasi\"ga o'zgartiring.",
-    ru: "Владеете этим местом или хотите добавить новое? Переключите аккаунт на «Владелец ресторана».",
-    en: "Own a place or want to add a new one? Switch your account to \"Restaurant owner\".",
-    kaa: "Бул орынның ийесисиз бе, әлле жаңа орын қосыудысыз ба? Аккаунтыңызды «Ресторан ийеси»ге өзгертиң.",
-  },
-  become_owner_cta: { uz: "Restoran egasiga o'tish", ru: "Стать владельцем ресторана", en: "Switch to restaurant owner", kaa: "Ресторан ийесине өтиу" },
 } as const satisfies Record<string, Record<Locale, string>>;
 
 export type DictKey = keyof typeof dict;

@@ -7,7 +7,7 @@ import { getMe, setAccountType } from "@/lib/data/client";
 
 export function OnboardingModal() {
   const t = useT();
-  const { status } = useSession();
+  const { status, update } = useSession();
   const [show, setShow] = useState(false);
   const [saving, setSaving] = useState<"CUSTOMER" | "OWNER" | null>(null);
 
@@ -26,6 +26,9 @@ export function OnboardingModal() {
     setSaving(type);
     try {
       await setAccountType(type);
+      // The role is baked into the JWT at sign-in and never re-read on its own;
+      // force a refresh so components reading useSession() see the new role right away.
+      await update();
       setShow(false);
     } finally {
       setSaving(null);

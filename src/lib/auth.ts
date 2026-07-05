@@ -40,11 +40,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // Email OTP via Resend: add the Resend provider once RESEND_API_KEY is set.
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user?.id) {
         const dbUser = await db.user.findUnique({ where: { id: user.id }, select: { role: true } });
         token.role = dbUser?.role ?? "USER";
         token.uid = user.id;
+      } else if (trigger === "update" && token.uid) {
+        // Client called session.update() right after PATCH /api/v1/me changed the role —
+        // re-read it so the JWT (otherwise fixed at sign-in) reflects it immediately.
+        const dbUser = await db.user.findUnique({ where: { id: token.uid as string }, select: { role: true } });
+        if (dbUser) token.role = dbUser.role;
       }
       return token;
     },

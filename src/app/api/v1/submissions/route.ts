@@ -28,8 +28,11 @@ const Body = z.object({
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  const user = session?.user as SessionUser | null;
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const sessionUser = session?.user as SessionUser | null;
+  if (!sessionUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // The role in the session JWT is only set at sign-in and doesn't reflect a role change made
+  // seconds ago via PATCH /api/v1/me, so re-read it from the DB rather than trusting the token.
+  const user = await db.user.findUnique({ where: { id: sessionUser.id }, select: { id: true, role: true } });
   // Only self-identified restaurant owners (or staff) can add new places — regular
   // customers browse/review but don't submit listings. See the onboarding modal / POST
   // /api/v1/me for how a user becomes an OWNER.
